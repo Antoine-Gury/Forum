@@ -1,1 +1,1 @@
-# ForumJS
+# Forum
