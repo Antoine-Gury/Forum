@@ -2,20 +2,30 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Forum WoW</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forum simple</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header>
-    <h1><a href="/">Forum WoW</a></h1>
+    <h1>Forum simple</h1>
+    <nav>
+      <a href="/">Accueil</a>
+      <a href="/forum">Forum</a>
+      <a href="/compte">Compte</a>
+    </nav>
   </header>
   <main>
-    {{ template "content" . }}
+    {{ if eq .Page "home" }}
+      {{ template "home" . }}
+    {{ else if eq .Page "forum" }}
+      {{ template "forum" . }}
+    {{ else if eq .Page "compte" }}
+      {{ template "compte" . }}
+    {{ end }}
   </main>
   <footer>
-    <p>Petit forum en Go — simple et local</p>
+    <p>Forum simple en Go</p>
   </footer>
-  <script src="/static/script.js"></script>
 </body>
 </html>

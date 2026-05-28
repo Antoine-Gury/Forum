@@ -1,9 +1,0 @@
-{{ define "content" }}
-  <h2>Nouveau sujet</h2>
-  <form action="/thread/create" method="post" class="form">
-    <label>Titre: <input type="text" name="title" required></label>
-    <label>Auteur: <input type="text" name="author"></label>
-    <label>Message: <textarea name="content" rows="6" required></textarea></label>
-    <button type="submit">Créer</button>
-  </form>
-{{ end }}

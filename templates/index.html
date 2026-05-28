@@ -1,13 +1,4 @@
-{{ define "content" }}
-  <a class="btn" href="/thread/new">Créer un nouveau sujet</a>
-  <ul class="threads">
-    {{ range .Threads }}
-      <li>
-        <a href="/thread/view?id={{ .ID }}">{{ .Title }}</a>
-        <small>{{ .Created.Format "2006-01-02 15:04" }}</small>
-      </li>
-    {{ else }}
-      <li>Aucun sujet pour le moment.</li>
-    {{ end }}
-  </ul>
+{{ define "home" }}
+  <h2>Accueil</h2>
+  <p>Bienvenue sur le forum simple. Clique sur les liens pour naviguer.</p>
 {{ end }}

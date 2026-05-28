@@ -1,2 +1,1 @@
-// Minimal JS (no dependencies)
-console.log('Forum WoW chargé');
+// script vide pour le site simple
