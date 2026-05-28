@@ -1,0 +1,22 @@
+{{ define "content" }}
+  <a href="/">← Retour</a>
+  <h2>{{ .Thread.Title }}</h2>
+  <ul class="posts">
+    {{ range .Thread.Posts }}
+      <li class="post">
+        <div class="meta"><strong>{{ .Author }}</strong> <span class="time">{{ .Created.Format "2006-01-02 15:04" }}</span></div>
+        <p>{{ .Content }}</p>
+      </li>
+    {{ else }}
+      <li>Aucun message pour le moment.</li>
+    {{ end }}
+  </ul>
+
+  <h3>Répondre</h3>
+  <form action="/thread/post" method="post" class="form">
+    <input type="hidden" name="thread_id" value="{{ .Thread.ID }}">
+    <label>Auteur: <input type="text" name="author"></label>
+    <label>Message: <textarea name="content" rows="4" required></textarea></label>
+    <button type="submit">Envoyer</button>
+  </form>
+{{ end }}
