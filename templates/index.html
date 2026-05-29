@@ -1,4 +1,35 @@
-{{ define "home" }}
-  <h2>Accueil</h2>
-  <p>Bienvenue sur le forum simple. Clique sur les liens pour naviguer.</p>
-{{ end }}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Accueil</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+<header>
+    <h1>Forum WoW</h1>
+</header>
+
+<nav>
+    <a href="/">Accueil</a>
+    <a href="/profil">Profil</a>
+    <a href="/create">Nouvelle discussion</a>
+</nav>
+
+<main>
+    <h2>Discussions récentes</h2>
+
+    {{range .}}
+        <div class="post">
+            <h3>
+                <a href="/discussion?id={{.ID}}">
+                    {{.Title}}
+                </a>
+            </h3>
+            <p>{{.Content}}</p>
+        </div>
+    {{end}}
+</main>
+
+</body>
+</html>
