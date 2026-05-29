@@ -1,21 +1,17 @@
-# Forum WoW (Go)
+# Forum simple en Go
 
-Petit forum minimal en Go utilisant `html/template` et assets statiques.
+Structure minimale d'un site de forum avec trois pages.
 
 ## Exécution
-
-Lancer le serveur localement:
 
 ```bash
 go run .
 ```
 
-Le serveur écoute sur `http://localhost:8080`.
+Puis ouvrir : `http://localhost:8080`
 
-## Fichiers importants
+## Pages
 
-- `main.go`: point d'entrée, démarre le serveur
-- `models.go`: définitions `Thread` et `Post`
-- `store.go`: logique de stockage en mémoire
-- `handlers.go`: gestion des routes et templates
-- `templates/` et `static/`: assets front-end
+- `/` : accueil
+- `/forum` : discussions
+- `/compte` : compte utilisateur
