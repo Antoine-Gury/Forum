@@ -22,11 +22,11 @@ func render(w http.ResponseWriter, page string, data interface{}) {
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
-    http.Redirect(w, r, "index.html", http.StatusFound)
+    render(w, "index.html", discussions)
 }
 
 func Profil(w http.ResponseWriter, r *http.Request) {
-    http.Redirect(w, r, "profil.html", http.StatusFound)
+    render(w, "profil.html", nil)
 }
 
 func Create(w http.ResponseWriter, r *http.Request) {
