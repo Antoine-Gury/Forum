@@ -1,6 +1,6 @@
 body {
     font-family: Arial;
-    background-image: url("LK-WOW.jpg");
+    background-image: url("BM-WOW.jpg");
     color: white;
     display: flex;
     justify-content: center;
@@ -10,9 +10,7 @@ body {
 }
 
 
-.login-container{
-    width: 900px;
-}
+
 
 
 .login-box {
@@ -54,9 +52,6 @@ button:hover {
 
 
 #register_acc{
-    color: aquamarine;
+    color: #4A607F;
 }
 
-#logo{
-    padding-left: 35px;
-}

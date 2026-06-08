@@ -1,0 +1,62 @@
+body {
+    font-family: Arial;
+    background-image: url("LK-WOW.jpg");
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+
+label{
+    color: #F1ED2F ;
+}
+
+h2{
+    color: #F1ED2F ;
+}
+
+
+.login-box {
+    background: #691111;
+    padding: 20px;
+    border-radius: 8px;
+    width: 280px;
+    text-align: center;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 5px;
+   
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background: orange;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #F1ED2F;
+}
+
+
+#login-button{
+    margin-left: 10px;
+
+}
+
+
+#logo{
+    padding-left: 10px;
+}
