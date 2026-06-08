@@ -1,6 +1,6 @@
 body {
     font-family: Arial;
-    background: #222;
+    background-image: url("LK-WOW.jpg");
     color: white;
     display: flex;
     justify-content: center;
@@ -9,8 +9,14 @@ body {
     margin: 0;
 }
 
+
+.login-container{
+    width: 900px;
+}
+
+
 .login-box {
-    background: #333;
+    background: #691111;
     padding: 20px;
     border-radius: 8px;
     width: 280px;
@@ -40,3 +46,17 @@ button:hover {
 }
 
 
+#login-button{
+    margin-left: 10px;
+
+}
+
+
+
+#register_acc{
+    color: aquamarine;
+}
+
+#logo{
+    padding-left: 35px;
+}
