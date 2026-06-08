@@ -22,11 +22,11 @@ func render(w http.ResponseWriter, page string, data interface{}) {
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
-	render(w, "index.html", discussions)
+    http.Redirect(w, r, "index.html", http.StatusFound)
 }
 
 func Profil(w http.ResponseWriter, r *http.Request) {
-	render(w, "profil.html", nil)
+    http.Redirect(w, r, "profil.html", http.StatusFound)
 }
 
 func Create(w http.ResponseWriter, r *http.Request) {
@@ -62,3 +62,4 @@ func DiscussionPage(w http.ResponseWriter, r *http.Request) {
 
 	http.NotFound(w, r)
 }
+

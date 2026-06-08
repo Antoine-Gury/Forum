@@ -10,10 +10,16 @@ header {
     text-align: center;
 }
 
-nav {
+.Accueil-button, .Nouvelle-discussion-button {
     background: #333;
     padding: 10px;
     text-align: center;
+}
+
+.Profil-button {
+    background: #333;
+    padding: 10px;
+    text-align: Right;
 }
 
 nav a {
