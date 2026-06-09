@@ -1,23 +1,25 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const homeButton = document.getElementById('homeButton');
-    const newDiscussionButton = document.getElementById('NewDiscussionButton');
-    const profileButton = document.getElementById('profileButton');
+const homeButton = document.getElementById("homeButton");
+const newDiscussionButton = document.getElementById("NewDiscussionButton");
+const profileButton = document.getElementById("profileButton");
 
-    if (homeButton) {
-        homeButton.addEventListener('click', function () {
-            window.location.href = '/';
-        });
-    }
+const navButtons = [homeButton, newDiscussionButton, profileButton];
 
-    if (newDiscussionButton) {
-        newDiscussionButton.addEventListener('click', function () {
-            window.location.href = '/create';
-        });
-    }
+function setActive(btn) {
+    navButtons.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+}
 
-    if (profileButton) {
-        profileButton.addEventListener('click', function () {
-            window.location.href = '/profil';
-        });
-    }
+homeButton.addEventListener("click", () => {
+    setActive(homeButton);
+    window.location.href = "/";
+});
+
+newDiscussionButton.addEventListener("click", () => {
+    setActive(newDiscussionButton);
+    window.location.href = "/new-discussion";
+});
+
+profileButton.addEventListener("click", () => {
+    setActive(profileButton);
+    window.location.href = "/profile";
 });

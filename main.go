@@ -16,7 +16,7 @@ func main() {
 	http.HandleFunc("/create", handlers.Create)
 	http.HandleFunc("/discussion", handlers.DiscussionPage)
 
-	fmt.Println("http://localhost:8080 ✅")
+	fmt.Println("http://localhost:8080")
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Println("Erreur serveur:", err)
