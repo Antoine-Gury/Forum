@@ -1,4 +1,4 @@
-package handlers
+package server
 
 import (
 	"html/template"
@@ -22,11 +22,11 @@ func render(w http.ResponseWriter, page string, data interface{}) {
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
-    render(w, "index.html", discussions)
+	render(w, "index.html", discussions)
 }
 
 func Profil(w http.ResponseWriter, r *http.Request) {
-    render(w, "profil.html", nil)
+	render(w, "profil.html", nil)
 }
 
 func Create(w http.ResponseWriter, r *http.Request) {
@@ -62,4 +62,3 @@ func DiscussionPage(w http.ResponseWriter, r *http.Request) {
 
 	http.NotFound(w, r)
 }
-
