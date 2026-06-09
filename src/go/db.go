@@ -58,6 +58,24 @@ func ensureDiscussionTable(ctx context.Context, pool *pgxpool.Pool) error {
 
 func ensureAuthTables(ctx context.Context, pool *pgxpool.Pool) error {
 	_, err := pool.Exec(ctx, `
+		DO $$
+		BEGIN
+			IF EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_name = 'profiles'
+				AND column_name = 'email'
+				AND data_type != 'text'
+			) THEN
+				DROP TABLE IF EXISTS profiles;
+			END IF;
+		END
+		$$;
+	`)
+	if err != nil {
+		return fmt.Errorf("check profiles schema: %w", err)
+	}
+
+	_, err = pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS profiles (
 			id TEXT PRIMARY KEY,
 			email TEXT NOT NULL,
@@ -67,7 +85,7 @@ func ensureAuthTables(ctx context.Context, pool *pgxpool.Pool) error {
 		)
 	`)
 	if err != nil {
-		return err
+		return fmt.Errorf("create profiles table: %w", err)
 	}
 
 	_, err = pool.Exec(ctx, `
@@ -77,7 +95,11 @@ func ensureAuthTables(ctx context.Context, pool *pgxpool.Pool) error {
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)
 	`)
-	return err
+	if err != nil {
+		return fmt.Errorf("create password_recovery_requests table: %w", err)
+	}
+
+	return nil
 }
 
 func SaveProfile(userID, email, username string) error {
@@ -144,6 +166,7 @@ func GetDiscussionsFromDB() ([]Discussion, error) {
 
 	return discussions, rows.Err()
 }
+
 func InsertDiscussion(title, content string) error {
 	if db == nil {
 		return errors.New("database not initialized")
@@ -168,6 +191,7 @@ func GetDiscussionByID(id int) (Discussion, error) {
 	err := db.QueryRow(ctx, "SELECT id, title, content FROM discussions WHERE id = $1", id).Scan(&d.ID, &d.Title, &d.Content)
 	return d, err
 }
+
 func CloseDB() {
 	if db != nil {
 		db.Close()

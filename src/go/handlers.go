@@ -43,22 +43,8 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	render(w, "index.html", getDiscussions())
 }
 
-func getAccessTokenFromRequest(r *http.Request) string {
-	cookie, err := r.Cookie("sb-access-token")
-	if err != nil {
-		return ""
-	}
-	return cookie.Value
-}
-
 func Profil(w http.ResponseWriter, r *http.Request) {
-	token := getAccessTokenFromRequest(r)
-	if token == "" {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	userResult, err := GetUserFromToken(token)
+	userResult, err := getAuthenticatedUser(w, r)
 	if err != nil || userResult.User.Email == "" {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return

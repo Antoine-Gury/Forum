@@ -9,20 +9,14 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 )
 
 const defaultSupabaseURL = "https://mzeuqpibemltwpwjuqnx.supabase.co"
 
-var httpClient = &http.Client{Timeout: 10 * time.Second}
+const cookieMaxAge = 7 * 24 * 60 * 60
 
-var authAttemptLimiter = struct {
-	mu       sync.Mutex
-	attempts map[string]time.Time
-}{
-	attempts: make(map[string]time.Time),
-}
+var httpClient = &http.Client{Timeout: 10 * time.Second}
 
 type supabaseAuthResponse struct {
 	AccessToken  string `json:"access_token"`
@@ -52,17 +46,20 @@ func getSupabaseURL() string {
 	return defaultSupabaseURL
 }
 
-func getSupabaseAnonKey() (string, error) {
+func getSupabaseAuthKey() (string, error) {
+	if key := os.Getenv("SUPABASE_SERVICE_ROLE_KEY"); key != "" {
+		return key, nil
+	}
 	key := os.Getenv("SUPABASE_ANON_KEY")
 	if key == "" {
-		return "", errors.New("missing SUPABASE_ANON_KEY environment variable")
+		return "", errors.New("missing SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY environment variable")
 	}
 	return key, nil
 }
 
 func supabaseAuthRequest(path string, payload any, out any) error {
 	supabaseURL := getSupabaseURL()
-	anonKey, err := getSupabaseAnonKey()
+	authKey, err := getSupabaseAuthKey()
 	if err != nil {
 		return err
 	}
@@ -76,8 +73,8 @@ func supabaseAuthRequest(path string, payload any, out any) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("apikey", anonKey)
-	req.Header.Set("Authorization", "Bearer "+anonKey)
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Authorization", "Bearer "+authKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := httpClient.Do(req)
@@ -144,9 +141,7 @@ func SignUpUser(email, password, username string) (supabaseAuthResponse, error) 
 	if err := supabaseAuthRequest("/auth/v1/signup", payload, &result); err != nil {
 		return result, err
 	}
-	if err := persistAuthProfile(result, username); err != nil {
-		return result, err
-	}
+	_ = persistAuthProfile(result, username)
 	return result, nil
 }
 
@@ -160,7 +155,29 @@ func SignInUser(email, password string) (supabaseAuthResponse, error) {
 	if err := supabaseAuthRequest("/auth/v1/token?grant_type=password", payload, &result); err != nil {
 		return result, err
 	}
-	if err := persistAuthProfile(result, ""); err != nil {
+	_ = persistAuthProfile(result, "")
+	return result, nil
+}
+
+func RefreshSession(refreshToken string) (supabaseAuthResponse, error) {
+	payload := map[string]string{
+		"refresh_token": refreshToken,
+	}
+
+	var result supabaseAuthResponse
+	if err := supabaseAuthRequest("/auth/v1/token?grant_type=refresh_token", payload, &result); err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
+func ExchangeCodeForSession(code string) (supabaseAuthResponse, error) {
+	payload := map[string]string{
+		"auth_code": code,
+	}
+
+	var result supabaseAuthResponse
+	if err := supabaseAuthRequest("/auth/v1/token?grant_type=pkce", payload, &result); err != nil {
 		return result, err
 	}
 	return result, nil
@@ -175,9 +192,7 @@ func SendRecoveryEmail(email string) error {
 	if err := supabaseAuthRequest("/auth/v1/recover", payload, &result); err != nil {
 		return err
 	}
-	if err := LogPasswordRecovery(email); err != nil {
-		return err
-	}
+	_ = LogPasswordRecovery(email)
 	return nil
 }
 
@@ -187,7 +202,7 @@ func GetUserFromToken(token string) (supabaseAuthResponse, error) {
 	}
 
 	supabaseURL := getSupabaseURL()
-	anonKey, err := getSupabaseAnonKey()
+	authKey, err := getSupabaseAuthKey()
 	if err != nil {
 		return supabaseAuthResponse{}, err
 	}
@@ -196,7 +211,7 @@ func GetUserFromToken(token string) (supabaseAuthResponse, error) {
 	if err != nil {
 		return supabaseAuthResponse{}, err
 	}
-	req.Header.Set("apikey", anonKey)
+	req.Header.Set("apikey", authKey)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := httpClient.Do(req)
@@ -246,28 +261,70 @@ func friendlyAuthError(err error) string {
 		return "Identifiants invalides. Vérifie ton email et ton mot de passe."
 	case strings.Contains(msg, "user already registered"), strings.Contains(msg, "user already exists"):
 		return "Cet email est déjà utilisé. Connecte-toi ou utilise un autre email."
+	case strings.Contains(msg, "email not confirmed"):
+		return "Ton email n'est pas encore confirmé. Vérifie ta boîte mail."
 	default:
 		return err.Error()
 	}
 }
 
-func checkAuthRateLimit(r *http.Request, email string) (bool, string) {
-	key := r.RemoteAddr + "|" + strings.ToLower(strings.TrimSpace(email))
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		key = strings.TrimSpace(strings.Split(xff, ",")[0]) + "|" + strings.ToLower(strings.TrimSpace(email))
+func setAuthCookies(w http.ResponseWriter, accessToken, refreshToken string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "sb-access-token",
+		Value:    accessToken,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   cookieMaxAge,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "sb-refresh-token",
+		Value:    refreshToken,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   cookieMaxAge,
+	})
+}
+
+func getAuthenticatedUser(w http.ResponseWriter, r *http.Request) (supabaseAuthResponse, error) {
+	accessToken := ""
+	if c, err := r.Cookie("sb-access-token"); err == nil {
+		accessToken = c.Value
 	}
 
-	authAttemptLimiter.mu.Lock()
-	defer authAttemptLimiter.mu.Unlock()
-
-	now := time.Now()
-	last, exists := authAttemptLimiter.attempts[key]
-	if exists && now.Sub(last) < 30*time.Second {
-		return false, "Trop de tentatives trop rapides. Attends 30 secondes avant de réessayer."
+	refreshToken := ""
+	if c, err := r.Cookie("sb-refresh-token"); err == nil {
+		refreshToken = c.Value
 	}
 
-	authAttemptLimiter.attempts[key] = now
-	return true, ""
+	if accessToken == "" && refreshToken == "" {
+		return supabaseAuthResponse{}, errors.New("non connecté")
+	}
+
+	if accessToken != "" {
+		user, err := GetUserFromToken(accessToken)
+		if err == nil && user.User.Email != "" {
+			return user, nil
+		}
+	}
+
+	if refreshToken == "" {
+		return supabaseAuthResponse{}, errors.New("session expirée")
+	}
+
+	refreshed, err := RefreshSession(refreshToken)
+	if err != nil || refreshed.AccessToken == "" {
+		return supabaseAuthResponse{}, errors.New("session expirée, reconnecte-toi")
+	}
+
+	setAuthCookies(w, refreshed.AccessToken, refreshed.RefreshToken)
+
+	user, err := GetUserFromToken(refreshed.AccessToken)
+	if err != nil {
+		return supabaseAuthResponse{}, err
+	}
+	return user, nil
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -283,11 +340,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if allowed, msg := checkAuthRateLimit(r, email); !allowed {
-		render(w, "Login.html", authPageData{Error: msg})
-		return
-	}
-
 	result, err := SignInUser(email, password)
 	if err != nil {
 		render(w, "Login.html", authPageData{Error: friendlyAuthError(err)})
@@ -299,22 +351,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "sb-access-token",
-		Value:    result.AccessToken,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "sb-refresh-token",
-		Value:    result.RefreshToken,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-
+	setAuthCookies(w, result.AccessToken, result.RefreshToken)
 	http.Redirect(w, r, "/profil", http.StatusSeeOther)
 }
 
@@ -357,18 +394,31 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if allowed, msg := checkAuthRateLimit(r, email); !allowed {
-		render(w, "register.html", authPageData{Error: msg})
-		return
-	}
-
 	_, err := SignUpUser(email, password, username)
 	if err != nil {
 		render(w, "register.html", authPageData{Error: friendlyAuthError(err)})
 		return
 	}
 
-	render(w, "register.html", authPageData{Message: "Inscription enregistrée. Vérifie tes mails pour confirmer ton compte."})
+	render(w, "register.html", authPageData{Message: "Inscription réussie ! Vérifie ta boîte mail et clique sur le lien de confirmation pour accéder au site."})
+}
+
+func AuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		render(w, "Login.html", authPageData{Error: "Lien de confirmation invalide."})
+		return
+	}
+
+	result, err := ExchangeCodeForSession(code)
+	if err != nil || result.AccessToken == "" {
+		render(w, "Login.html", authPageData{Error: "Lien de confirmation invalide ou expiré. Réessaie de te connecter."})
+		return
+	}
+
+	_ = persistAuthProfile(result, "")
+	setAuthCookies(w, result.AccessToken, result.RefreshToken)
+	http.Redirect(w, r, "/profil", http.StatusSeeOther)
 }
 
 func ForgotHandler(w http.ResponseWriter, r *http.Request) {
@@ -380,11 +430,6 @@ func ForgotHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	if email == "" {
 		render(w, "Forget_passwd.html", authPageData{Error: "Email requis."})
-		return
-	}
-
-	if allowed, msg := checkAuthRateLimit(r, email); !allowed {
-		render(w, "Forget_passwd.html", authPageData{Error: msg})
 		return
 	}
 

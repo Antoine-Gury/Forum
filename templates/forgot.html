@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouveau mot de passe</title>
+    <link rel="stylesheet" href="/assets/css/reset_passwd.css">
+    <link rel="shortcut icon" type="image/png" href="/assets/Picture/Favicone.png">
+</head>
+
+<body>
+
+    <a id="back-forgot" href="/assets/Picture/back-forgot.jpg">  </a>
+
+
+    <div class="reset-container">
+       
+        <img id="logo" src="/assets/Picture/Wow-icone.png" alt="WoW Forum" />
+
+        <h2>Nouveau mot de passe</h2>
+        <p class="reset-subtitle">Choisis un nouveau mot de passe sécurisé pour ton compte.</p>
+
+        <form class="reset-form" action="/auth/reset" method="post">
+            {{with .Error}}
+            <div class="form-error">{{.}}</div>
+            {{end}}
+            {{with .Message}}
+            <div class="form-success">{{.}}</div>
+            {{end}}
+
+            <input type="hidden" name="token" value="{{.Token}}">
+
+            <label for="password">Nouveau mot de passe</label>
+            <div class="input-wrapper">
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Votre nouveau mot de passe"
+                    required
+                    minlength="8"
+                >
+                <button type="button" class="eye-toggle" onclick="toggleVisibility('password', this)" tabindex="-1">
+                    👁
+                </button>
+            </div>
+
+            <label for="confirm_password">Confirmer le mot de passe</label>
+            <div class="input-wrapper">
+                <input
+                    type="password"
+                    id="confirm_password"
+                    name="confirm_password"
+                    placeholder="Confirmez votre mot de passe"
+                    required
+                    minlength="8"
+                >
+                <button type="button" class="eye-toggle" onclick="toggleVisibility('confirm_password', this)" tabindex="-1">
+                    👁
+                </button>
+            </div>
+
+            <div class="strength-bar-wrap" id="strength-wrap">
+                <div class="strength-bar" id="strength-bar"></div>
+            </div>
+            <p class="strength-label" id="strength-label"></p>
+
+            <button type="submit" id="reset-button">Réinitialiser le mot de passe</button>
+
+            <p class="return-link">
+                Retourner à la <a href="/login">connexion</a>
+            </p>
+        </form>
+    </div>
+
+    <script>
+        function toggleVisibility(id, btn) {
+            const input = document.getElementById(id);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.style.opacity = '1';
+            } else {
+                input.type = 'password';
+                btn.style.opacity = '0.5';
+            }
+        }
+
+        const pwdInput = document.getElementById('password');
+        const bar = document.getElementById('strength-bar');
+        const label = document.getElementById('strength-label');
+
+        const levels = [
+            { label: 'Très faible', color: '#7B160B', width: '20%' },
+            { label: 'Faible',      color: '#c0392b', width: '40%' },
+            { label: 'Moyen',       color: '#e67e22', width: '60%' },
+            { label: 'Fort',        color: '#a8c300', width: '80%' },
+            { label: 'Très fort',   color: '#27ae60', width: '100%' },
+        ];
+
+        pwdInput.addEventListener('input', () => {
+            const v = pwdInput.value;
+            let score = 0;
+            if (v.length >= 8)  score++;
+            if (v.length >= 12) score++;
+            if (/[A-Z]/.test(v)) score++;
+            if (/[0-9]/.test(v)) score++;
+            if (/[^A-Za-z0-9]/.test(v)) score++;
+            score = Math.min(score, 4);
+
+            if (v.length === 0) {
+                bar.style.width = '0';
+                label.textContent = '';
+                return;
+            }
+            bar.style.width = levels[score].width;
+            bar.style.background = levels[score].color;
+            label.textContent = levels[score].label;
+            label.style.color = levels[score].color;
+        });
+    </script>
+
+</body>
+</html>

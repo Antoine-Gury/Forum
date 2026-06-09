@@ -19,9 +19,7 @@ body {
     min-height: 100vh;
 }
 
-/* ── HEADER ── */
 header {
-    /* Pour ajouter un fond : background-image: url('/assets/img/header-bg.jpg'); background-size: cover; */
     background-color: #0a0e14;
     border-bottom: 2px solid var(--color-5);
     padding: 28px 24px;
@@ -49,7 +47,6 @@ header {
     margin-top: 6px;
 }
 
-/* ── NAV ── */
 nav {
     background: #060a0d;
     border-bottom: 1px solid #1a2230;
@@ -82,14 +79,12 @@ nav button.active {
     border-bottom-color: var(--color-4);
 }
 
-/* ── MAIN ── */
 main {
     max-width: 860px;
     margin: 0 auto;
     padding: 30px 20px 60px;
 }
 
-/* ── SECTION TITLE ── */
 .section-title {
     font-family: 'Cinzel', serif;
     font-size: 0.78rem;
@@ -102,7 +97,6 @@ main {
     margin-bottom: 12px;
 }
 
-/* ── POST ── */
 .post {
     display: flex;
     align-items: center;
@@ -134,7 +128,6 @@ main {
     font-family: 'Cinzel', serif;
     font-size: 1rem;
     color: var(--color-4);
-    /* Pour une image : object-fit: cover; */
 }
 
 .post-body {
@@ -167,7 +160,6 @@ main {
     text-overflow: ellipsis;
 }
 
-/* ── EMPTY STATE ── */
 .empty {
     text-align: center;
     padding: 50px 20px;

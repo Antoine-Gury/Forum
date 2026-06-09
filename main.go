@@ -57,6 +57,7 @@ func main() {
 		port = "8080"
 	}
 
+	http.HandleFunc("/auth/callback", handlers.AuthCallbackHandler)
 	http.HandleFunc("/", handlers.Home)
 	http.HandleFunc("/index.html", handlers.Home)
 	http.HandleFunc("/profil", handlers.Profil)
