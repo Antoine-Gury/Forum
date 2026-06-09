@@ -37,6 +37,7 @@ type supabaseAuthResponse struct {
 type authPageData struct {
 	Message string
 	Error   string
+	Token   string
 }
 
 func getSupabaseURL() string {
@@ -172,14 +173,46 @@ func RefreshSession(refreshToken string) (supabaseAuthResponse, error) {
 }
 
 func ExchangeCodeForSession(code string) (supabaseAuthResponse, error) {
-	payload := map[string]string{
-		"auth_code": code,
+	supabaseURL := getSupabaseURL()
+	authKey, err := getSupabaseAuthKey()
+	if err != nil {
+		return supabaseAuthResponse{}, err
 	}
 
-	var result supabaseAuthResponse
-	if err := supabaseAuthRequest("/auth/v1/token?grant_type=pkce", payload, &result); err != nil {
-		return result, err
+	payload := map[string]string{
+		"token_hash": code,
+		"type":       "recovery",
 	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequest(http.MethodPost, supabaseURL+"/auth/v1/verify", bytes.NewReader(body))
+	if err != nil {
+		return supabaseAuthResponse{}, err
+	}
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return supabaseAuthResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+
+	// LOG TEMPORAIRE
+	fmt.Println("Supabase verify response:", string(respBody))
+
+	var result supabaseAuthResponse
+	json.Unmarshal(respBody, &result)
+
+	if resp.StatusCode >= 300 {
+		if result.ErrorDescription != "" {
+			return result, errors.New(result.ErrorDescription)
+		}
+		return result, fmt.Errorf("verify failed: %s", resp.Status)
+	}
+
 	return result, nil
 }
 
@@ -416,6 +449,19 @@ func AuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tokenType := r.URL.Query().Get("type")
+	if tokenType == "recovery" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "sb-reset-token",
+			Value:    result.AccessToken,
+			Path:     "/",
+			HttpOnly: true,
+			MaxAge:   600,
+		})
+		http.Redirect(w, r, "/reset", http.StatusSeeOther)
+		return
+	}
+
 	_ = persistAuthProfile(result, "")
 	setAuthCookies(w, result.AccessToken, result.RefreshToken)
 	http.Redirect(w, r, "/profil", http.StatusSeeOther)
@@ -439,4 +485,74 @@ func ForgotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render(w, "Forget_passwd.html", authPageData{Message: "Un email de récupération a été envoyé."})
+}
+
+func ResetPassword(w http.ResponseWriter, r *http.Request) {
+	render(w, "forgot.html", authPageData{})
+}
+
+func ResetHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/reset", http.StatusSeeOther)
+		return
+	}
+
+	cookie, err := r.Cookie("sb-reset-token")
+	if err != nil || cookie.Value == "" {
+		render(w, "forgot.html", authPageData{Error: "Session expirée. Refais une demande de réinitialisation."})
+		return
+	}
+
+	password := r.FormValue("password")
+	confirm := r.FormValue("confirm_password")
+
+	if password != confirm {
+		render(w, "forgot.html", authPageData{Error: "Les mots de passe ne correspondent pas."})
+		return
+	}
+	if len(password) < 8 {
+		render(w, "forgot.html", authPageData{Error: "Minimum 8 caractères."})
+		return
+	}
+
+	if err := UpdatePassword(cookie.Value, password); err != nil {
+		render(w, "forgot.html", authPageData{Error: friendlyAuthError(err)})
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name: "sb-reset-token", Value: "", Path: "/", MaxAge: -1,
+	})
+
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+func UpdatePassword(accessToken, newPassword string) error {
+	payload := map[string]string{"password": newPassword}
+
+	supabaseURL := getSupabaseURL()
+	authKey, err := getSupabaseAuthKey()
+	if err != nil {
+		return err
+	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequest(http.MethodPut, supabaseURL+"/auth/v1/user", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("échec de la mise à jour du mot de passe")
+	}
+	return nil
 }

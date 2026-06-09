@@ -57,6 +57,8 @@ func main() {
 		port = "8080"
 	}
 
+	http.HandleFunc("/reset", handlers.ResetPassword)
+	http.HandleFunc("/auth/reset", handlers.ResetHandler)
 	http.HandleFunc("/auth/callback", handlers.AuthCallbackHandler)
 	http.HandleFunc("/", handlers.Home)
 	http.HandleFunc("/index.html", handlers.Home)
