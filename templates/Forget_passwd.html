@@ -4,14 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Mot de passe oublié</title>
-    <link rel="stylesheet" href="../assets/css/passwd_forget.css">
-    <link rel="shortcut icon"  type= "image/png" href="../assets/Picture/Favicone.png">
-    
+    <link rel="stylesheet" href="/assets/css/passwd_forget.css">
+    <link rel="shortcut icon"  type="image/png" href="/assets/Picture/Favicone.png">
 </head>
 
 <body>
    
-   <a id="back-WOOD" href="../assets/Picture/WOOD-WOW.jpg">  </a>
+   <a id="back-WOOD" href="/assets/Picture/WOOD-WOW.jpg">  </a>
 
 
 
@@ -19,18 +18,25 @@
 
           <img
         id="logo"
-        src="../assets/Picture/Wow-icone.png" />
+        src="/assets/Picture/Wow-icone.png" />
         
          <h2>Forget Password</h2>
 
-        <form class="Forget_passwd">
+        <form class="Forget_passwd" action="/auth/forgot" method="post">
+            {{with .Error}}
+            <div class="form-error">{{.}}</div>
+            {{end}}
+            {{with .Message}}
+            <div class="form-success">{{.}}</div>
+            {{end}}
+
             <label for="email">Adresse email</label>
-            <input type="email" id="email" placeholder="exemple@mail.com" required>
+            <input type="email" id="email" name="email" placeholder="exemple@mail.com" required>
 
             <button type="submit" id="passwd_button">Envoyer requête</button>
 
             <p class="return-link">
-                Pas encore inscrit ? <a href="Login.html" id="reurn_acc">Retourner a la Connexion</a>
+                Retourner à la <a href="/login" id="reurn_acc">connexion</a>
             </p>
 
         </form>

@@ -21,5 +21,5 @@ newDiscussionButton.addEventListener("click", () => {
 
 profileButton.addEventListener("click", () => {
     setActive(profileButton);
-    window.location.href = "/profile";
+    window.location.href = "/login";
 });

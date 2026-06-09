@@ -10,8 +10,13 @@
 
 <a href="/">Retour</a>
 
-<p>Pseudo : Joueur123</p>
-<p>Classe : Mage</p>
+{{ if .Email }}
+<p>Email : {{ .Email }}</p>
+<p>ID : {{ .ID }}</p>
+<p><a href="/logout">Se déconnecter</a></p>
+{{ else }}
+<p>Tu dois être connecté pour voir cette page.</p>
+{{ end }}
 
 </body>
 </html>

@@ -11,6 +11,9 @@
 <a href="/">Retour</a>
 
 <form method="POST">
+    {{ with .Error }}
+    <div style="color:red; margin-bottom: 10px;">{{ . }}</div>
+    {{ end }}
     <input name="title" placeholder="Titre"><br><br>
     <textarea name="content" placeholder="Message"></textarea><br><br>
     <button type="submit">Publier</button>

@@ -1,0 +1,107 @@
+package handlers
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var db *pgxpool.Pool
+
+func InitDB() error {
+	dbURL := os.Getenv("SUPABASE_DB_URL")
+	if dbURL == "" {
+		return errors.New("missing SUPABASE_DB_URL environment variable")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return fmt.Errorf("database ping failed: %w", err)
+	}
+
+	db = pool
+	if err := ensureDiscussionTable(ctx, pool); err != nil {
+		pool.Close()
+		return err
+	}
+
+	return nil
+}
+
+func ensureDiscussionTable(ctx context.Context, pool *pgxpool.Pool) error {
+	_, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS discussions (
+			id SERIAL PRIMARY KEY,
+			title TEXT NOT NULL,
+			content TEXT NOT NULL
+		)
+	`)
+	return err
+}
+
+func GetDiscussionsFromDB() ([]Discussion, error) {
+	if db == nil {
+		return nil, errors.New("database not initialized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rows, err := db.Query(ctx, "SELECT id, title, content FROM discussions ORDER BY id DESC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var discussions []Discussion
+	for rows.Next() {
+		var d Discussion
+		if err := rows.Scan(&d.ID, &d.Title, &d.Content); err != nil {
+			return nil, err
+		}
+		discussions = append(discussions, d)
+	}
+
+	return discussions, rows.Err()
+}
+func InsertDiscussion(title, content string) error {
+	if db == nil {
+		return errors.New("database not initialized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := db.Exec(ctx, "INSERT INTO discussions (title, content) VALUES ($1, $2)", title, content)
+	return err
+}
+
+func GetDiscussionByID(id int) (Discussion, error) {
+	if db == nil {
+		return Discussion{}, errors.New("database not initialized")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var d Discussion
+	err := db.QueryRow(ctx, "SELECT id, title, content FROM discussions WHERE id = $1", id).Scan(&d.ID, &d.Title, &d.Content)
+	return d, err
+}
+func CloseDB() {
+	if db != nil {
+		db.Close()
+	}
+}
