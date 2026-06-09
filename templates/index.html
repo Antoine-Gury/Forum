@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/index.css">
+    <script src="/assets/js/button.js" defer></script>
 </head>
 <body>
 
@@ -17,12 +18,24 @@
 </header>
 
 <nav>
-    <button id="homeButton" class="Accueil-button active" type="button">Accueil</button>
-    <button id="NewDiscussionButton" class="Nouvelle-discussion-button" type="button">Nouvelle discussion</button>
-    <button id="profileButton" class="Profil-button" type="button">Profil</button>
+    <div class="nav-left">
+        <button id="homeButton" class="Accueil-button active" type="button">Accueil</button>
+        <button id="NewDiscussionButton" class="Nouvelle-discussion-button" type="button">Nouvelle discussion</button>
+    </div>
+    <div class="nav-right">
+        <button id="profileButton" class="Profil-button" type="button">Profil</button>
+    </div>
 </nav>
 
 <main>
+    <section class="hero">
+        <div class="hero-inner">
+            <h1>Bienvenue sur le Forum WoW</h1>
+            <p class="hero-sub">Échangez, discutez et partagez vos aventures. Rejoignez la communauté.</p>
+            
+        </div>
+    </section>
+
     <div class="section-title">Discussions récentes</div>
 
     {{range .}}
@@ -42,6 +55,5 @@
     {{end}}
 </main>
 
-<script src="/src/js/button.js"></script>
 </body>
 </html>

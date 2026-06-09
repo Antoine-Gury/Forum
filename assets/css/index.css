@@ -1,183 +1,29 @@
-:root {
-    --color-1: #000;
-    --color-2: #4A607F;
-    --color-3: #FFF;
-    --color-4: #F1ED2F;
-    --color-5: #7B160B;
-}
+:root{--bg:#000;--muted:#4A607F;--fg:#fff;--accent:#F1ED2F}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:Inter,system-ui,Arial;min-height:100vh}
+header{background:#0a0e14;border-bottom:2px solid #7B160B;padding:24px;text-align:center}
+.logo{font-family:Cinzel,serif;color:var(--accent);font-weight:700;font-size:1.8rem}
+.tagline{color:var(--muted);font-size:.75rem;letter-spacing:.14em;margin-top:6px}
+nav{background:#060a0d;border-bottom:1px solid #1a2230;display:flex;justify-content:space-between;align-items:center;padding:6px 18px;position:sticky;top:0;z-index:10}
+nav .nav-left,nav .nav-right{display:flex;gap:8px;align-items:center}
+nav button{background:none;border:none;color:#7a8fa3;font-family:Cinzel,serif;font-size:.75rem;font-weight:600;letter-spacing:.12em;padding:10px 12px;cursor:pointer;border-bottom:2px solid transparent}
+nav button.active,nav button:hover{color:var(--accent);border-bottom-color:var(--accent)}
+main{max-width:900px;margin:0 auto;padding:22px}
+.hero{background:linear-gradient(180deg,rgba(10,14,20,.6),rgba(6,10,13,.9));padding:28px;border-radius:4px;margin-bottom:18px}
+.hero h1{font-family:Cinzel,serif;color:var(--accent);font-size:1.6rem;margin-bottom:6px}
+.hero-sub{color:#9aa6b6;font-size:.95rem}
+.section-title{font-family:Cinzel,serif;color:var(--muted);text-transform:uppercase;font-size:.78rem;border-bottom:1px solid #1a2230;padding-bottom:8px;margin:14px 0}
+.post{display:flex;gap:12px;align-items:center;background:#0b0f14;border:1px solid #1a2230;padding:12px;margin-bottom:8px;border-left:3px solid var(--muted);transition:background .12s}
+.post:hover{background:#0f1520;border-left-color:var(--accent)}
+.post-avatar{width:42px;height:42px;background:#1a2636;border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-family:Cinzel,serif}
+.post-body h3{font-family:Cinzel,serif;margin:0 0 6px 0;font-size:1rem}
+.post-body h3 a{color:var(--fg);text-decoration:none}
+.post-body p{color:#6f8596;font-size:.9rem;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{text-align:center;padding:34px;border:1px dashed #1a2230;color:#2d3d50;border-radius:4px}
+a{color:var(--accent)}
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    background: var(--color-1);
-    color: var(--color-3);
-    font-family: 'Inter', sans-serif;
-    min-height: 100vh;
-}
-
-/* ── HEADER ── */
-header {
-    /* Pour ajouter un fond : background-image: url('/assets/img/header-bg.jpg'); background-size: cover; */
-    background-color: #0a0e14;
-    border-bottom: 2px solid var(--color-5);
-    padding: 28px 24px;
-    text-align: center;
-}
-
-.logo {
-    font-family: 'Cinzel', serif;
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: var(--color-4);
-    letter-spacing: 0.06em;
-    text-shadow: 0 0 20px rgba(241, 237, 47, 0.3);
-}
-
-.logo-img {
-    max-height: 80px;
-}
-
-.tagline {
-    font-size: 0.75rem;
-    color: var(--color-2);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    margin-top: 6px;
-}
-
-/* ── NAV ── */
-nav {
-    background: #060a0d;
-    border-bottom: 1px solid #1a2230;
-    display: flex;
-    gap: 2px;
-    padding: 0 20px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-nav button {
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: #7a8fa3;
-    font-family: 'Cinzel', serif;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: 13px 16px;
-    cursor: pointer;
-    transition: color 0.2s, border-color 0.2s;
-}
-
-nav button:hover,
-nav button.active {
-    color: var(--color-4);
-    border-bottom-color: var(--color-4);
-}
-
-/* ── MAIN ── */
-main {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 30px 20px 60px;
-}
-
-/* ── SECTION TITLE ── */
-.section-title {
-    font-family: 'Cinzel', serif;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--color-2);
-    border-bottom: 1px solid #1a2230;
-    padding-bottom: 10px;
-    margin-bottom: 12px;
-}
-
-/* ── POST ── */
-.post {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    background: #0b0f14;
-    border: 1px solid #1a2230;
-    border-left: 3px solid var(--color-2);
-    padding: 14px 16px;
-    margin-bottom: 4px;
-    transition: border-left-color 0.15s, background 0.15s;
-    cursor: pointer;
-}
-
-.post:hover {
-    background: #0f1520;
-    border-left-color: var(--color-4);
-}
-
-.post-avatar {
-    width: 42px;
-    height: 42px;
-    flex-shrink: 0;
-    background: #1a2636;
-    border: 1px solid var(--color-2);
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Cinzel', serif;
-    font-size: 1rem;
-    color: var(--color-4);
-    /* Pour une image : object-fit: cover; */
-}
-
-.post-body {
-    flex: 1;
-    min-width: 0;
-}
-
-.post-body h3 {
-    font-family: 'Cinzel', serif;
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.post-body h3 a {
-    color: var(--color-3);
-    text-decoration: none;
-    transition: color 0.15s;
-}
-
-.post:hover .post-body h3 a {
-    color: var(--color-4);
-}
-
-.post-body p {
-    font-size: 0.75rem;
-    color: #4a5a6a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* ── EMPTY STATE ── */
-.empty {
-    text-align: center;
-    padding: 50px 20px;
-    color: #2d3d50;
-    font-size: 0.85rem;
-    border: 1px dashed #1a2230;
-    border-radius: 2px;
-}
-
-.empty a {
-    color: var(--color-4);
-    text-decoration: none;
+@media(max-width:640px){
+  .hero h1{font-size:1.2rem}
+  nav button{padding:8px 10px;font-size:.7rem}
+  .post-body p{white-space:normal}
 }
