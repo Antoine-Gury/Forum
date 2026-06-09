@@ -1,0 +1,144 @@
+:root {
+    --color-1: #000;
+    --color-2: #4A607F;
+    --color-3: #FFF;
+    --color-4: #F1ED2F;
+    --color-5: #7B160B;
+    --surface: rgba(0, 0, 0, 0.55);
+    --surface-strong: rgba(0, 0, 0, 0.72);
+    --shadow: 0 28px 60px rgba(0, 0, 0, 0.45);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: var(--color-3);
+    background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url("../Picture/WOOD-WOW.jpg") center/cover no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#back-LK,
+#back-WOOD {
+    display: none;
+}
+
+.login-container,
+.register-container,
+.Forget_passwd {
+    width: min(92%, 420px);
+    padding: 32px 28px 28px;
+    border-radius: 24px;
+    background: rgba(0, 0, 0, 0.52);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: var(--shadow);
+}
+
+#logo {
+    display: block;
+    width: 340px;
+    margin: 0 auto 18px;
+}
+
+h2 {
+    margin: 0 0 22px;
+    font-size: 2rem;
+    color: var(--color-4);
+    text-align: center;
+}
+
+label {
+    display: block;
+    margin: 0 0 8px;
+    color: var(--color-2);
+    font-weight: 600;
+}
+
+input {
+    width: 100%;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-3);
+    font-size: 0.98rem;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+input:focus {
+    border-color: rgba(241, 237, 47, 0.95);
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 4px rgba(241, 237, 47, 0.12);
+}
+
+button {
+    width: 100%;
+    padding: 14px 16px;
+    margin-top: 6px;
+    background: var(--color-4);
+    color: var(--color-1);
+    border: none;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.18s ease, filter 0.18s ease;
+}
+
+button:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+}
+
+p.register-link,
+p.return-link {
+    margin-top: 18px;
+    font-size: 0.95rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+a {
+    color: var(--color-4);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+#login-button,
+#passwd_button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* center the form block inside the panel */
+.login-container,
+.register-container,
+.Forget_passwd {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.login-form,
+.register-link,
+.Forget_passwd form {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+}
