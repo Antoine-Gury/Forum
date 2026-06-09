@@ -37,6 +37,11 @@ func InitDB() error {
 		return err
 	}
 
+	if err := ensureAuthTables(ctx, pool); err != nil {
+		pool.Close()
+		return err
+	}
+
 	return nil
 }
 
@@ -48,6 +53,69 @@ func ensureDiscussionTable(ctx context.Context, pool *pgxpool.Pool) error {
 			content TEXT NOT NULL
 		)
 	`)
+	return err
+}
+
+func ensureAuthTables(ctx context.Context, pool *pgxpool.Pool) error {
+	_, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS profiles (
+			id TEXT PRIMARY KEY,
+			email TEXT NOT NULL,
+			username TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS password_recovery_requests (
+			id SERIAL PRIMARY KEY,
+			email TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)
+	`)
+	return err
+}
+
+func SaveProfile(userID, email, username string) error {
+	if db == nil {
+		return errors.New("database not initialized")
+	}
+	if userID == "" || email == "" {
+		return errors.New("profile data incomplete")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := db.Exec(ctx, `
+		INSERT INTO profiles (id, email, username, updated_at)
+		VALUES ($1, $2, $3, NOW())
+		ON CONFLICT (id) DO UPDATE SET
+			email = EXCLUDED.email,
+			username = EXCLUDED.username,
+			updated_at = NOW()
+	`, userID, email, username)
+	return err
+}
+
+func LogPasswordRecovery(email string) error {
+	if db == nil {
+		return errors.New("database not initialized")
+	}
+	if email == "" {
+		return errors.New("email requis")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := db.Exec(ctx, `
+		INSERT INTO password_recovery_requests (email) VALUES ($1)
+	`, email)
 	return err
 }
 

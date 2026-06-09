@@ -8,12 +8,21 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
+	"sync"
 	"time"
 )
 
 const defaultSupabaseURL = "https://mzeuqpibemltwpwjuqnx.supabase.co"
 
 var httpClient = &http.Client{Timeout: 10 * time.Second}
+
+var authAttemptLimiter = struct {
+	mu       sync.Mutex
+	attempts map[string]time.Time
+}{
+	attempts: make(map[string]time.Time),
+}
 
 type supabaseAuthResponse struct {
 	AccessToken  string `json:"access_token"`
@@ -107,6 +116,21 @@ func supabaseAuthRequest(path string, payload any, out any) error {
 	return nil
 }
 
+func persistAuthProfile(result supabaseAuthResponse, username string) error {
+	userID := result.User.ID
+	if userID == "" {
+		userID = result.ID
+	}
+	email := result.User.Email
+	if email == "" {
+		email = result.Email
+	}
+	if userID == "" || email == "" {
+		return nil
+	}
+	return SaveProfile(userID, email, username)
+}
+
 func SignUpUser(email, password, username string) (supabaseAuthResponse, error) {
 	payload := map[string]any{
 		"email":    email,
@@ -118,6 +142,9 @@ func SignUpUser(email, password, username string) (supabaseAuthResponse, error) 
 
 	var result supabaseAuthResponse
 	if err := supabaseAuthRequest("/auth/v1/signup", payload, &result); err != nil {
+		return result, err
+	}
+	if err := persistAuthProfile(result, username); err != nil {
 		return result, err
 	}
 	return result, nil
@@ -133,6 +160,9 @@ func SignInUser(email, password string) (supabaseAuthResponse, error) {
 	if err := supabaseAuthRequest("/auth/v1/token?grant_type=password", payload, &result); err != nil {
 		return result, err
 	}
+	if err := persistAuthProfile(result, ""); err != nil {
+		return result, err
+	}
 	return result, nil
 }
 
@@ -143,6 +173,9 @@ func SendRecoveryEmail(email string) error {
 
 	var result supabaseAuthResponse
 	if err := supabaseAuthRequest("/auth/v1/recover", payload, &result); err != nil {
+		return err
+	}
+	if err := LogPasswordRecovery(email); err != nil {
 		return err
 	}
 	return nil
@@ -200,6 +233,43 @@ func GetUserFromToken(token string) (supabaseAuthResponse, error) {
 	return result, nil
 }
 
+func friendlyAuthError(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "email rate limit exceeded"), strings.Contains(msg, "rate limit exceeded"):
+		return "Trop de tentatives. Utilise une autre adresse email ou attends quelques minutes avant de réessayer."
+	case strings.Contains(msg, "invalid login credentials"), strings.Contains(msg, "invalid credentials"):
+		return "Identifiants invalides. Vérifie ton email et ton mot de passe."
+	case strings.Contains(msg, "user already registered"), strings.Contains(msg, "user already exists"):
+		return "Cet email est déjà utilisé. Connecte-toi ou utilise un autre email."
+	default:
+		return err.Error()
+	}
+}
+
+func checkAuthRateLimit(r *http.Request, email string) (bool, string) {
+	key := r.RemoteAddr + "|" + strings.ToLower(strings.TrimSpace(email))
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		key = strings.TrimSpace(strings.Split(xff, ",")[0]) + "|" + strings.ToLower(strings.TrimSpace(email))
+	}
+
+	authAttemptLimiter.mu.Lock()
+	defer authAttemptLimiter.mu.Unlock()
+
+	now := time.Now()
+	last, exists := authAttemptLimiter.attempts[key]
+	if exists && now.Sub(last) < 30*time.Second {
+		return false, "Trop de tentatives trop rapides. Attends 30 secondes avant de réessayer."
+	}
+
+	authAttemptLimiter.attempts[key] = now
+	return true, ""
+}
+
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
@@ -213,9 +283,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if allowed, msg := checkAuthRateLimit(r, email); !allowed {
+		render(w, "Login.html", authPageData{Error: msg})
+		return
+	}
+
 	result, err := SignInUser(email, password)
 	if err != nil {
-		render(w, "Login.html", authPageData{Error: err.Error()})
+		render(w, "Login.html", authPageData{Error: friendlyAuthError(err)})
 		return
 	}
 
@@ -282,9 +357,14 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if allowed, msg := checkAuthRateLimit(r, email); !allowed {
+		render(w, "register.html", authPageData{Error: msg})
+		return
+	}
+
 	_, err := SignUpUser(email, password, username)
 	if err != nil {
-		render(w, "register.html", authPageData{Error: err.Error()})
+		render(w, "register.html", authPageData{Error: friendlyAuthError(err)})
 		return
 	}
 
@@ -303,8 +383,13 @@ func ForgotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if allowed, msg := checkAuthRateLimit(r, email); !allowed {
+		render(w, "Forget_passwd.html", authPageData{Error: msg})
+		return
+	}
+
 	if err := SendRecoveryEmail(email); err != nil {
-		render(w, "Forget_passwd.html", authPageData{Error: err.Error()})
+		render(w, "Forget_passwd.html", authPageData{Error: friendlyAuthError(err)})
 		return
 	}
 
