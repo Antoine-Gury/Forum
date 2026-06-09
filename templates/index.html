@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forum WoW</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/index.css">
+</head>
+<body>
+
+<header>
+    <!-- Remplace par : <img src="/assets/img/logo.png" alt="Forum WoW" class="logo-img"> -->
+    <div class="logo">Forum WoW</div>
+    <div class="tagline">Discussions de la communauté</div>
+</header>
+
+<nav>
+    <button id="homeButton" class="Accueil-button active" type="button">Accueil</button>
+    <button id="NewDiscussionButton" class="Nouvelle-discussion-button" type="button">Nouvelle discussion</button>
+    <button id="profileButton" class="Profil-button" type="button">Profil</button>
+</nav>
+
+<main>
+    <div class="section-title">Discussions récentes</div>
+
+    {{range .}}
+    <div class="post">
+        <!-- Remplace par : <img src="/assets/img/avatar-default.png" class="post-avatar"> -->
+        <div class="post-avatar">⚔</div>
+        <div class="post-body">
+            <h3><a href="/discussion?id={{.ID}}">{{.Title}}</a></h3>
+            <p>{{.Content}}</p>
+        </div>
+    </div>
+    {{else}}
+    <div class="empty">
+        Aucune discussion pour l'instant. —
+        <a href="#" onclick="document.getElementById('NewDiscussionButton').click()">Crée la première.</a>
+    </div>
+    {{end}}
+</main>
+
+<script src="/src/js/button.js"></script>
+</body>
+</html>
