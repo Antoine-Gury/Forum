@@ -180,12 +180,11 @@ func ExchangeCodeForSession(code string) (supabaseAuthResponse, error) {
 	}
 
 	payload := map[string]string{
-		"token_hash": code,
-		"type":       "recovery",
+		"auth_code": code,
 	}
 
 	body, _ := json.Marshal(payload)
-	req, err := http.NewRequest(http.MethodPost, supabaseURL+"/auth/v1/verify", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, supabaseURL+"/auth/v1/token?grant_type=pkce", bytes.NewReader(body))
 	if err != nil {
 		return supabaseAuthResponse{}, err
 	}
@@ -199,9 +198,7 @@ func ExchangeCodeForSession(code string) (supabaseAuthResponse, error) {
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
-
-	// LOG TEMPORAIRE
-	fmt.Println("Supabase verify response:", string(respBody))
+	fmt.Println("Supabase PKCE response:", string(respBody))
 
 	var result supabaseAuthResponse
 	json.Unmarshal(respBody, &result)
@@ -210,21 +207,46 @@ func ExchangeCodeForSession(code string) (supabaseAuthResponse, error) {
 		if result.ErrorDescription != "" {
 			return result, errors.New(result.ErrorDescription)
 		}
-		return result, fmt.Errorf("verify failed: %s", resp.Status)
+		return result, fmt.Errorf("exchange failed: %s", resp.Status)
 	}
 
 	return result, nil
 }
 
 func SendRecoveryEmail(email string) error {
-	payload := map[string]string{
-		"email": email,
-	}
-
-	var result supabaseAuthResponse
-	if err := supabaseAuthRequest("/auth/v1/recover", payload, &result); err != nil {
+	supabaseURL := getSupabaseURL()
+	authKey, err := getSupabaseAuthKey()
+	if err != nil {
 		return err
 	}
+
+	payload := map[string]any{
+		"email":      email,
+		"redirectTo": "http://localhost:8081/auth/callback",
+	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequest(http.MethodPost, supabaseURL+"/auth/v1/recover", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Authorization", "Bearer "+authKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body2, _ := io.ReadAll(resp.Body)
+	fmt.Println("Supabase recover response:", string(body2))
+
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("recover failed: %s", resp.Status)
+	}
+
 	_ = LogPasswordRecovery(email)
 	return nil
 }
@@ -438,19 +460,15 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 func AuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
-	if code == "" {
-		render(w, "Login.html", authPageData{Error: "Lien de confirmation invalide."})
-		return
-	}
-
-	result, err := ExchangeCodeForSession(code)
-	if err != nil || result.AccessToken == "" {
-		render(w, "Login.html", authPageData{Error: "Lien de confirmation invalide ou expiré. Réessaie de te connecter."})
-		return
-	}
-
 	tokenType := r.URL.Query().Get("type")
-	if tokenType == "recovery" {
+
+	if code != "" && tokenType == "recovery" {
+		// Échange du code PKCE
+		result, err := ExchangeCodeForSession(code)
+		if err != nil || result.AccessToken == "" {
+			render(w, "Login.html", authPageData{Error: "Lien invalide ou expiré."})
+			return
+		}
 		http.SetCookie(w, &http.Cookie{
 			Name:     "sb-reset-token",
 			Value:    result.AccessToken,
@@ -462,9 +480,20 @@ func AuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = persistAuthProfile(result, "")
-	setAuthCookies(w, result.AccessToken, result.RefreshToken)
-	http.Redirect(w, r, "/profil", http.StatusSeeOther)
+	if code != "" {
+		result, err := ExchangeCodeForSession(code)
+		if err != nil || result.AccessToken == "" {
+			render(w, "Login.html", authPageData{Error: "Lien de confirmation invalide ou expiré."})
+			return
+		}
+		_ = persistAuthProfile(result, "")
+		setAuthCookies(w, result.AccessToken, result.RefreshToken)
+		http.Redirect(w, r, "/profil", http.StatusSeeOther)
+		return
+	}
+
+	// Pas de code = hash fragment (confirmation email) → page intermédiaire JS
+	render(w, "auth_callback.html", nil)
 }
 
 func ForgotHandler(w http.ResponseWriter, r *http.Request) {
