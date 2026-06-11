@@ -1,0 +1,295 @@
+package handlers
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"time"
+)
+
+const defaultSupabaseURL = "https://mzeuqpibemltwpwjuqnx.supabase.co"
+
+var httpClient = &http.Client{Timeout: 10 * time.Second}
+
+type supabaseAuthResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	TokenType    string `json:"token_type"`
+	ID           string `json:"id"`
+	Email        string `json:"email"`
+	User         struct {
+		ID    string `json:"id"`
+		Email string `json:"email"`
+	} `json:"user"`
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+	Msg              string `json:"msg"`
+}
+
+func getSupabaseURL() string {
+	if url := os.Getenv("SUPABASE_URL"); url != "" {
+		return url
+	}
+	return defaultSupabaseURL
+}
+
+func getSupabaseAuthKey() (string, error) {
+	if key := os.Getenv("SUPABASE_SERVICE_ROLE_KEY"); key != "" {
+		return key, nil
+	}
+	key := os.Getenv("SUPABASE_ANON_KEY")
+	if key == "" {
+		return "", errors.New("missing SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY environment variable")
+	}
+	return key, nil
+}
+
+func supabaseAuthRequest(path string, payload any, out any) error {
+	supabaseURL := getSupabaseURL()
+	authKey, err := getSupabaseAuthKey()
+	if err != nil {
+		return err
+	}
+
+	requestBody, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, supabaseURL+path, bytes.NewReader(requestBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Authorization", "Bearer "+authKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if out != nil {
+		if err := json.Unmarshal(responseBody, out); err != nil {
+			return fmt.Errorf("decode response: %w", err)
+		}
+	}
+
+	if resp.StatusCode >= 300 {
+		var errResp supabaseAuthResponse
+		if err := json.Unmarshal(responseBody, &errResp); err == nil {
+			if errResp.ErrorDescription != "" {
+				return errors.New(errResp.ErrorDescription)
+			}
+			if errResp.Error != "" {
+				return errors.New(errResp.Error)
+			}
+			if errResp.Msg != "" {
+				return errors.New(errResp.Msg)
+			}
+		}
+		return fmt.Errorf("supabase auth request failed: %s", resp.Status)
+	}
+
+	return nil
+}
+
+func persistAuthProfile(result supabaseAuthResponse, username string) error {
+	userID := result.User.ID
+	if userID == "" {
+		userID = result.ID
+	}
+	email := result.User.Email
+	if email == "" {
+		email = result.Email
+	}
+	if userID == "" || email == "" {
+		return nil
+	}
+	return SaveProfile(userID, email, username)
+}
+
+func SignUpUser(email, password, username string) (supabaseAuthResponse, error) {
+	payload := map[string]any{
+		"email":    email,
+		"password": password,
+	}
+	if username != "" {
+		payload["data"] = map[string]string{"username": username}
+	}
+
+	var result supabaseAuthResponse
+	if err := supabaseAuthRequest("/auth/v1/signup", payload, &result); err != nil {
+		return result, err
+	}
+	_ = persistAuthProfile(result, username)
+	return result, nil
+}
+
+func SignInUser(email, password string) (supabaseAuthResponse, error) {
+	payload := map[string]string{
+		"email":    email,
+		"password": password,
+	}
+
+	var result supabaseAuthResponse
+	if err := supabaseAuthRequest("/auth/v1/token?grant_type=password", payload, &result); err != nil {
+		return result, err
+	}
+	_ = persistAuthProfile(result, "")
+	return result, nil
+}
+
+func RefreshSession(refreshToken string) (supabaseAuthResponse, error) {
+	payload := map[string]string{
+		"refresh_token": refreshToken,
+	}
+
+	var result supabaseAuthResponse
+	if err := supabaseAuthRequest("/auth/v1/token?grant_type=refresh_token", payload, &result); err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
+func ExchangeCodeForSession(code string) (supabaseAuthResponse, error) {
+	supabaseURL := getSupabaseURL()
+	authKey, err := getSupabaseAuthKey()
+	if err != nil {
+		return supabaseAuthResponse{}, err
+	}
+
+	payload := map[string]string{
+		"auth_code": code,
+	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequest(http.MethodPost, supabaseURL+"/auth/v1/token?grant_type=pkce", bytes.NewReader(body))
+	if err != nil {
+		return supabaseAuthResponse{}, err
+	}
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return supabaseAuthResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	fmt.Println("Supabase PKCE response:", string(respBody))
+
+	var result supabaseAuthResponse
+	json.Unmarshal(respBody, &result)
+
+	if resp.StatusCode >= 300 {
+		if result.ErrorDescription != "" {
+			return result, errors.New(result.ErrorDescription)
+		}
+		return result, fmt.Errorf("exchange failed: %s", resp.Status)
+	}
+
+	return result, nil
+}
+
+func SendRecoveryEmail(email string) error {
+	supabaseURL := getSupabaseURL()
+	authKey, err := getSupabaseAuthKey()
+	if err != nil {
+		return err
+	}
+
+	payload := map[string]any{
+		"email":      email,
+		"redirectTo": "http://localhost:8081/auth/callback",
+	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequest(http.MethodPost, supabaseURL+"/auth/v1/recover", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Authorization", "Bearer "+authKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body2, _ := io.ReadAll(resp.Body)
+	fmt.Println("Supabase recover response:", string(body2))
+
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("recover failed: %s", resp.Status)
+	}
+
+	_ = LogPasswordRecovery(email)
+	return nil
+}
+
+func GetUserFromToken(token string) (supabaseAuthResponse, error) {
+	if token == "" {
+		return supabaseAuthResponse{}, errors.New("token manquant")
+	}
+
+	supabaseURL := getSupabaseURL()
+	authKey, err := getSupabaseAuthKey()
+	if err != nil {
+		return supabaseAuthResponse{}, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, supabaseURL+"/auth/v1/user", nil)
+	if err != nil {
+		return supabaseAuthResponse{}, err
+	}
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return supabaseAuthResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return supabaseAuthResponse{}, err
+	}
+
+	var result supabaseAuthResponse
+	if err := json.Unmarshal(responseBody, &result); err != nil {
+		return supabaseAuthResponse{}, err
+	}
+
+	if result.User.Email == "" {
+		result.User.Email = result.Email
+		result.User.ID = result.ID
+	}
+
+	if resp.StatusCode >= 300 {
+		if result.ErrorDescription != "" {
+			return result, errors.New(result.ErrorDescription)
+		}
+		if result.Error != "" {
+			return result, errors.New(result.Error)
+		}
+		return result, fmt.Errorf("supabase user failed: %s", resp.Status)
+	}
+
+	return result, nil
+}
