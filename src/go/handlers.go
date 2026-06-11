@@ -9,11 +9,12 @@ import (
 type Discussion struct {
 	ID      int
 	Title   string
+	Author  string
 	Content string
 }
 
 var discussions = []Discussion{
-	{ID: 0, Title: "Raid ICC stratégie", Content: "Comment battre le Roi Liche ?"},
+	{ID: 0, Title: "Raid ICC stratégie", Author: "Ezekiel", Content: "Comment battre le Roi Liche ?"},
 }
 
 func render(w http.ResponseWriter, page string, data interface{}) {
@@ -32,6 +33,10 @@ func Profil(w http.ResponseWriter, r *http.Request) {
 func Create(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		title := r.FormValue("title")
+		author := r.FormValue("author")
+		if author == "" {
+			author = "Invité"
+		}
 		content := r.FormValue("content")
 
 		id := len(discussions)
@@ -39,6 +44,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 		discussions = append(discussions, Discussion{
 			ID:      id,
 			Title:   title,
+			Author:  author,
 			Content: content,
 		})
 
