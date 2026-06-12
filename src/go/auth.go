@@ -111,23 +111,3 @@ func AuthCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	// Pas de code = hash fragment (confirmation email) → page intermédiaire JS
 	render(w, "auth_callback.html", nil)
 }
-
-func ForgotHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "/forgot", http.StatusSeeOther)
-		return
-	}
-
-	email := r.FormValue("email")
-	if email == "" {
-		render(w, "Forget_passwd.html", authPageData{Error: "Email requis."})
-		return
-	}
-
-	if err := SendRecoveryEmail(email); err != nil {
-		render(w, "Forget_passwd.html", authPageData{Error: friendlyAuthError(err)})
-		return
-	}
-
-	render(w, "Forget_passwd.html", authPageData{Message: "Un email de récupération a été envoyé."})
-}

@@ -1,23 +1,36 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Créer</title>
+    <title>Nouvelle discussion</title>
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
 
-<h1>Créer une discussion</h1>
+<header>
+    <h1>Nouvelle discussion</h1>
+</header>
 
-<a href="/">Retour</a>
+<nav>
+    <a href="/">Accueil</a> | <a href="/profil">Profil</a>
+</nav>
 
-<form method="POST">
-    {{ with .Error }}
-    <div style="color:red; margin-bottom: 10px;">{{ . }}</div>
-    {{ end }}
-    <input name="title" placeholder="Titre"><br><br>
-    <textarea name="content" placeholder="Message"></textarea><br><br>
-    <button type="submit">Publier</button>
-</form>
+<main>
+    <section class="form-card">
+        <h2>Créer une nouvelle discussion</h2>
+        <form action="/create" method="POST">
+            <label for="author">Pseudo</label>
+            <input id="author" name="author" placeholder="Ton pseudo" required>
+
+            <label for="title">Titre</label>
+            <input id="title" name="title" placeholder="Titre de la discussion" required>
+
+            <label for="content">Message</label>
+            <textarea id="content" name="content" placeholder="Écris ton message ici" rows="6" required></textarea>
+
+            <button type="submit">Publier</button>
+        </form>
+    </section>
+</main>
 
 </body>
 </html>

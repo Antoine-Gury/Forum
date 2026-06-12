@@ -117,10 +117,52 @@ func persistAuthProfile(result supabaseAuthResponse, username string) error {
 	if userID == "" || email == "" {
 		return nil
 	}
-	return SaveProfile(userID, email, username)
+
+	if db != nil {
+		return SaveProfile(userID, email, username)
+	}
+
+	supabaseURL := getSupabaseURL()
+	authKey, err := getSupabaseAuthKey()
+	if err != nil {
+		return err
+	}
+
+	payload := map[string]string{"id": userID, "email": email, "username": username}
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequest(http.MethodPost, supabaseURL+"/rest/v1/profiles", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Authorization", "Bearer "+authKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Prefer", "resolution=merge-duplicates")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("persist profile failed: %s - %s", resp.Status, string(respBody))
+	}
+	return nil
 }
 
 func SignUpUser(email, password, username string) (supabaseAuthResponse, error) {
+	if db != nil {
+		exists, err := emailAlreadyExists(email)
+		if err != nil {
+			return supabaseAuthResponse{}, err
+		}
+		if exists {
+			return supabaseAuthResponse{}, errors.New("user already registered")
+		}
+	}
+
 	payload := map[string]any{
 		"email":    email,
 		"password": password,
@@ -133,7 +175,9 @@ func SignUpUser(email, password, username string) (supabaseAuthResponse, error) 
 	if err := supabaseAuthRequest("/auth/v1/signup", payload, &result); err != nil {
 		return result, err
 	}
-	_ = persistAuthProfile(result, username)
+	if err := persistAuthProfile(result, username); err != nil {
+		fmt.Printf("warn: persist profile: %v\n", err)
+	}
 	return result, nil
 }
 
@@ -147,7 +191,7 @@ func SignInUser(email, password string) (supabaseAuthResponse, error) {
 	if err := supabaseAuthRequest("/auth/v1/token?grant_type=password", payload, &result); err != nil {
 		return result, err
 	}
-	_ = persistAuthProfile(result, "")
+	// Pas de persistAuthProfile ici — évite les doublons
 	return result, nil
 }
 

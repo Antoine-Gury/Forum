@@ -16,7 +16,7 @@ homeButton.addEventListener("click", () => {
 
 newDiscussionButton.addEventListener("click", () => {
     setActive(newDiscussionButton);
-    window.location.href = "/new-discussion";
+    window.location.href = "/create";
 });
 
 profileButton.addEventListener("click", () => {

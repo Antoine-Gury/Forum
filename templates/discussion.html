@@ -6,11 +6,36 @@
 </head>
 <body>
 
-<h1>{{.Title}}</h1>
+<header>
+    <h1>{{.Title}}</h1>
+</header>
 
-<p>{{.Content}}</p>
+<nav>
+    <a href="/">Accueil</a> | <a href="/create">Nouvelle discussion</a>
+</nav>
 
-<a href="/">Retour</a>
+<main>
+    <section class="discussion-header">
+        <div class="discussion-title">
+            <h2>{{.Title}}</h2>
+            <div class="discussion-meta">
+                <span class="discussion-author">Publié par {{if .Author}}{{.Author}}{{else}}Invité{{end}}</span>
+                <span class="discussion-dot">•</span>
+                <span class="discussion-role">Membre du forum</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="discussion-card">
+        <div class="discussion-post">
+            <div class="discussion-avatar">{{if .Author}}{{printf "%c" (index .Author 0)}}{{else}}I{{end}}</div>
+            <div class="discussion-body">
+                <div class="discussion-user">{{if .Author}}{{.Author}}{{else}}Invité{{end}}</div>
+                <div class="discussion-content">{{if .Content}}{{.Content}}{{else}}Aucun message publié pour le moment.{{end}}</div>
+            </div>
+        </div>
+    </section>
+</main>
 
 </body>
 </html>

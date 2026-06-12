@@ -12,6 +12,20 @@ import (
 
 var db *pgxpool.Pool
 
+func emailAlreadyExists(email string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var count int
+	err := db.QueryRow(ctx,
+		"SELECT COUNT(*) FROM profiles WHERE email = $1", email,
+	).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func InitDB() error {
 	dbURL := os.Getenv("SUPABASE_DB_URL")
 	if dbURL == "" {
@@ -50,6 +64,7 @@ func ensureDiscussionTable(ctx context.Context, pool *pgxpool.Pool) error {
 		CREATE TABLE IF NOT EXISTS discussions (
 			id SERIAL PRIMARY KEY,
 			title TEXT NOT NULL,
+			author TEXT NOT NULL DEFAULT 'Invité',
 			content TEXT NOT NULL
 		)
 	`)
@@ -141,6 +156,23 @@ func LogPasswordRecovery(email string) error {
 	return err
 }
 
+func GetUsernameByID(userID string) string {
+	if db == nil {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var username string
+	err := db.QueryRow(ctx,
+		"SELECT COALESCE(username, '') FROM profiles WHERE id = $1", userID,
+	).Scan(&username)
+	if err != nil {
+		return ""
+	}
+	return username
+}
+
 func GetDiscussionsFromDB() ([]Discussion, error) {
 	if db == nil {
 		return nil, errors.New("database not initialized")
@@ -149,7 +181,7 @@ func GetDiscussionsFromDB() ([]Discussion, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	rows, err := db.Query(ctx, "SELECT id, title, content FROM discussions ORDER BY id DESC")
+	rows, err := db.Query(ctx, "SELECT id, title, author, content FROM discussions ORDER BY id DESC")
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +190,7 @@ func GetDiscussionsFromDB() ([]Discussion, error) {
 	var discussions []Discussion
 	for rows.Next() {
 		var d Discussion
-		if err := rows.Scan(&d.ID, &d.Title, &d.Content); err != nil {
+		if err := rows.Scan(&d.ID, &d.Title, &d.Author, &d.Content); err != nil {
 			return nil, err
 		}
 		discussions = append(discussions, d)
@@ -167,16 +199,21 @@ func GetDiscussionsFromDB() ([]Discussion, error) {
 	return discussions, rows.Err()
 }
 
-func InsertDiscussion(title, content string) error {
+func InsertDiscussion(title, author, content string) (Discussion, error) {
 	if db == nil {
-		return errors.New("database not initialized")
+		return Discussion{}, errors.New("database not initialized")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := db.Exec(ctx, "INSERT INTO discussions (title, content) VALUES ($1, $2)", title, content)
-	return err
+	var id int
+	err := db.QueryRow(ctx, "INSERT INTO discussions (title, author, content) VALUES ($1, $2, $3) RETURNING id", title, author, content).Scan(&id)
+	if err != nil {
+		return Discussion{}, err
+	}
+
+	return Discussion{ID: id, Title: title, Author: author, Content: content}, nil
 }
 
 func GetDiscussionByID(id int) (Discussion, error) {
@@ -188,7 +225,7 @@ func GetDiscussionByID(id int) (Discussion, error) {
 	defer cancel()
 
 	var d Discussion
-	err := db.QueryRow(ctx, "SELECT id, title, content FROM discussions WHERE id = $1", id).Scan(&d.ID, &d.Title, &d.Content)
+	err := db.QueryRow(ctx, "SELECT id, title, author, content FROM discussions WHERE id = $1", id).Scan(&d.ID, &d.Title, &d.Author, &d.Content)
 	return d, err
 }
 

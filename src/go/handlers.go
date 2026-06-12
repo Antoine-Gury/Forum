@@ -1,21 +1,31 @@
 package handlers
 
 import (
+	"encoding/json"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strconv"
+	"sync"
 )
 
 type Discussion struct {
 	ID      int
 	Title   string
+	Author  string
 	Content string
 }
 
+type HomePageData struct {
+	Discussions []Discussion
+	Message     string
+}
+
 type ProfilePageData struct {
-	Email string
-	ID    string
-	Error string
+	Email    string
+	ID       string
+	Username string
+	Error    string
 }
 
 type CreatePageData struct {
@@ -23,12 +33,73 @@ type CreatePageData struct {
 }
 
 var defaultDiscussions = []Discussion{
-	{ID: 0, Title: "Raid ICC stratégie", Content: "Comment battre le Roi Liche ?"},
+	{ID: 0, Title: "Raid ICC stratégie", Author: "Ezekiel", Content: "Comment battre le Roi Liche ?"},
 }
+
+var sseClients = make(map[chan Discussion]struct{})
+var sseClientsMu sync.Mutex
 
 func render(w http.ResponseWriter, page string, data interface{}) {
 	tpl := template.Must(template.ParseFiles("templates/" + page))
 	tpl.Execute(w, data)
+}
+
+func broadcastNewDiscussion(d Discussion) {
+	sseClientsMu.Lock()
+	defer sseClientsMu.Unlock()
+
+	for ch := range sseClients {
+		select {
+		case ch <- d:
+		default:
+		}
+	}
+}
+
+func addSSEClient(ch chan Discussion) {
+	sseClientsMu.Lock()
+	defer sseClientsMu.Unlock()
+	sseClients[ch] = struct{}{}
+}
+
+func removeSSEClient(ch chan Discussion) {
+	sseClientsMu.Lock()
+	defer sseClientsMu.Unlock()
+	delete(sseClients, ch)
+}
+
+func Events(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	ch := make(chan Discussion, 1)
+	addSSEClient(ch)
+	defer removeSSEClient(ch)
+
+	notify := r.Context().Done()
+
+	for {
+		select {
+		case <-notify:
+			return
+		case d := <-ch:
+			data, err := json.Marshal(d)
+			if err != nil {
+				continue
+			}
+			_, _ = w.Write([]byte("event: discussion\n"))
+			_, _ = w.Write([]byte("data: " + string(data) + "\n\n"))
+			flusher.Flush()
+		}
+	}
 }
 
 func getDiscussions() []Discussion {
@@ -40,7 +111,11 @@ func getDiscussions() []Discussion {
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
-	render(w, "index.html", getDiscussions())
+	message := r.URL.Query().Get("message")
+	render(w, "index.html", HomePageData{
+		Discussions: getDiscussions(),
+		Message:     message,
+	})
 }
 
 func Profil(w http.ResponseWriter, r *http.Request) {
@@ -50,9 +125,12 @@ func Profil(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	username := GetUsernameByID(userResult.User.ID)
+
 	render(w, "profil.html", ProfilePageData{
-		Email: userResult.User.Email,
-		ID:    userResult.User.ID,
+		Email:    userResult.User.Email,
+		ID:       userResult.User.ID,
+		Username: username,
 	})
 }
 
@@ -64,21 +142,28 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	render(w, "register.html", nil)
 }
 
-func ForgotPassword(w http.ResponseWriter, r *http.Request) {
-	render(w, "Forget_passwd.html", nil)
-}
-
 func Create(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		title := r.FormValue("title")
+		author := r.FormValue("author")
+		if author == "" {
+			author = "Invité"
+		}
 		content := r.FormValue("content")
 
-		if err := InsertDiscussion(title, content); err != nil {
-			render(w, "create.html", CreatePageData{Error: err.Error()})
+		if title == "" || content == "" {
+			render(w, "create.html", CreatePageData{Error: "Titre et message requis."})
 			return
 		}
 
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		newDiscussion, err := InsertDiscussion(title, author, content)
+		if err != nil {
+			render(w, "create.html", CreatePageData{Error: "Impossible d'enregistrer la discussion."})
+			return
+		}
+
+		broadcastNewDiscussion(newDiscussion)
+		http.Redirect(w, r, "/?message="+url.QueryEscape("Discussion publiée !"), http.StatusSeeOther)
 		return
 	}
 

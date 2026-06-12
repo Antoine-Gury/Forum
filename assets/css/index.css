@@ -26,6 +26,11 @@ header {
     text-align: center;
 }
 
+
+.Profil-button{
+    margin-left: auto;
+}
+
 .logo {
     font-family: 'Cinzel', serif;
     font-size: 2.2rem;
@@ -173,3 +178,4 @@ main {
     color: var(--color-4);
     text-decoration: none;
 }
+

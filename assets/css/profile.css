@@ -1,0 +1,156 @@
+:root {
+    --color-1: #000;
+    --color-2: #4A607F;
+    --color-3: #FFF;
+    --color-4: #F1ED2F;
+    --color-5: #7B160B;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--color-1);
+    color: var(--color-3);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+}
+
+header {
+    background-color: #0a0e14;
+    border-bottom: 2px solid var(--color-5);
+    padding: 28px 24px;
+    text-align: center;
+}
+
+.logo-img {
+    max-height: 180px;
+}
+
+.tagline {
+    font-size: 0.75rem;
+    color: var(--color-2);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 6px;
+}
+
+main {
+    max-width: 500px;
+    margin: 60px auto;
+    padding: 0 20px;
+}
+
+.profile-card {
+    background: #0b0f14;
+    border: 1px solid #1a2230;
+    border-top: 3px solid var(--color-5);
+    padding: 40px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+}
+
+.avatar {
+    width: 80px;
+    height: 80px;
+    background: #1a2636;
+    border: 2px solid var(--color-2);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--color-4);
+}
+
+.profile-info {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #1a2230;
+    padding-bottom: 10px;
+    gap: 16px;
+}
+
+.label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-2);
+    font-family: 'Cinzel', serif;
+    flex-shrink: 0;
+}
+
+.value {
+    font-size: 0.85rem;
+    text-align: right;
+    word-break: break-all;
+}
+
+.username {
+    color: var(--color-4);
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+}
+
+.mail {
+    color: var(--color-3);
+}
+
+.id {
+    color: #4a5a6a;
+    font-size: 0.72rem;
+}
+
+.profile-actions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.btn {
+    flex: 1;
+    padding: 10px 16px;
+    text-align: center;
+    text-decoration: none;
+    font-size: 0.78rem;
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.2s;
+}
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+.btn-secondary {
+    background: #1a2636;
+    color: var(--color-3);
+    border: 1px solid var(--color-2);
+}
+
+.btn-danger {
+    background: var(--color-5);
+    color: var(--color-3);
+}
+
+.not-logged {
+    color: var(--color-2);
+    font-size: 0.85rem;
+}

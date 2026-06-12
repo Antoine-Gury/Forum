@@ -1,21 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profil</title>
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/profile.css">
+    <link rel="shortcut icon" type="image/png" href="/assets/Picture/Favicone.png">
 </head>
 <body>
 
-<h1>Profil</h1>
-
-<a href="/">Retour</a>
+<header>
+    <img class="logo-img" src="/assets/Picture/Wow-icone.png" alt="WoW Logo">
+    <div class="tagline">Espace personnel</div>
+</header>
 
 {{ if .Email }}
-<p>Email : {{ .Email }}</p>
-<p>ID : {{ .ID }}</p>
-<p><a href="/logout">Se déconnecter</a></p>
+<main>
+    <div class="profile-card">
+        <div class="avatar">⚔</div>
+
+        <div class="profile-info">
+            <div class="info-row">
+                <span class="label">Pseudo</span>
+                <span class="value username">{{ if .Username }}{{ .Username }}{{ else }}—{{ end }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Email</span>
+                <span class="value mail">{{ .Email }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">ID</span>
+                <span class="value id">{{ .ID }}</span>
+            </div>
+        </div>
+
+        <div class="profile-actions">
+            <a href="/" class="btn btn-secondary">← Retour au forum</a>
+            <a href="/logout" class="btn btn-danger">Déconnexion</a>
+        </div>
+    </div>
+</main>
 {{ else }}
-<p>Tu dois être connecté pour voir cette page.</p>
+<main>
+    <div class="profile-card">
+        <p class="not-logged">Tu dois être connecté pour voir cette page.</p>
+        <a href="/login" class="btn btn-secondary">Se connecter</a>
+    </div>
+</main>
 {{ end }}
 
 </body>

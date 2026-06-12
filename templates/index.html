@@ -16,31 +16,38 @@
     <div class="tagline">Discussions de la communauté</div>
 </header>
 
-<nav>
-    <button id="homeButton" class="Accueil-button active" type="button">Accueil</button>
+<nav class="main-nav">
+    <button id="homeButton" class="Accueil-button" type="button">Accueil</button>
     <button id="NewDiscussionButton" class="Nouvelle-discussion-button" type="button">Nouvelle discussion</button>
-    <button id="profileButton" class="Profil-button" type="button" >Profil</button>
+    <button id="profileButton" class="Profil-button nav-right" type="button">Profil</button>
 </nav>
 
 <main>
     <div class="section-title">Discussions récentes</div>
 
-    {{range .}}
-    <div class="post">
-        <div class="post-avatar">⚔</div>
-        <div class="post-body">
-            <h3><a href="/discussion?id={{.ID}}">{{.Title}}</a></h3>
-            <p>{{.Content}}</p>
-        </div>
-    </div>
-    {{else}}
-    <div class="empty">
-        Aucune discussion pour l'instant. —
-        <a href="#" onclick="document.getElementById('NewDiscussionButton').click()">Crée la première.</a>
-    </div>
+    {{if .Message}}
+    <div class="home-message">{{.Message}}</div>
     {{end}}
+
+    <div id="discussions-list">
+        {{range .Discussions}}
+        <div class="post">
+            <div class="post-avatar">⚔</div>
+            <div class="post-body">
+                <h3><a href="/discussion?id={{.ID}}">{{.Title}}</a></h3>
+                <p>{{.Content}}</p>
+            </div>
+        </div>
+        {{else}}
+        <div class="empty">
+            Aucune discussion pour l'instant. —
+            <a href="#" onclick="document.getElementById('NewDiscussionButton').click()">Crée la première.</a>
+        </div>
+        {{end}}
+    </div>
 </main>
 
 <script src="/src/js/button.js"></script>
+<script src="/src/js/live.js"></script>
 </body>
 </html>

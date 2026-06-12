@@ -11,6 +11,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 	username := r.FormValue("username")
+
 	if email == "" || password == "" {
 		render(w, "register.html", authPageData{Error: "Email et mot de passe requis."})
 		return

@@ -22,9 +22,138 @@ header {
     text-align: Right;
 }
 
+nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+}
+
+.nav-right {
+    margin-left: auto;
+}
+
 nav a {
     color: white;
     margin: 10px;
+}
+
+.form-card {
+    background: #1e1e1e;
+    border: 1px solid #2f4f64;
+    border-radius: 10px;
+    max-width: 500px;
+    margin: 30px auto;
+    padding: 20px;
+}
+
+.form-card h2 {
+    margin-top: 0;
+    color: #a2d5ff;
+}
+
+.form-card label {
+    display: block;
+    margin: 12px 0 6px;
+    font-size: 0.95rem;
+}
+
+.form-card input,
+.form-card textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #3c4f5f;
+    border-radius: 6px;
+    background: #0f1620;
+    color: white;
+    box-sizing: border-box;
+}
+
+.form-card button {
+    margin-top: 16px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    background: #2e7bf7;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.form-card button:hover {
+    background: #2565d8;
+}
+
+.discussion-card {
+    background: #12161d;
+    border: 1px solid #2b3a4b;
+    border-radius: 16px;
+    max-width: 760px;
+    margin: 30px auto;
+    padding: 22px;
+}
+
+.discussion-header {
+    max-width: 760px;
+    margin: 30px auto 0;
+    padding: 0 20px;
+}
+
+.discussion-header h2 {
+    margin: 0;
+    font-size: 2rem;
+    color: #f5f9ff;
+}
+
+.discussion-meta {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 8px;
+    color: #a3b4d1;
+    font-size: 0.95rem;
+}
+
+.discussion-dot {
+    color: #5f7ea8;
+}
+
+.discussion-post {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+}
+
+.discussion-avatar {
+    width: 72px;
+    min-width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    background: #2f4a79;
+    color: white;
+    display: grid;
+    place-items: center;
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.discussion-body {
+    flex: 1;
+}
+
+.discussion-user {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e6eefb;
+}
+
+.discussion-content {
+    margin-top: 12px;
+    color: #d8e2f3;
+    line-height: 1.75;
+    white-space: pre-line;
 }
 
 .post {
