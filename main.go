@@ -72,6 +72,7 @@ func main() {
 	http.HandleFunc("/create", handlers.Create)
 	http.HandleFunc("/new-discussion", handlers.Create)
 	http.HandleFunc("/events", handlers.Events)
+	http.HandleFunc("/debug/insert", handlers.DebugInsert)
 	http.HandleFunc("/discussion", handlers.DiscussionPage)
 
 	fmt.Printf("http://localhost:%s\n", port)

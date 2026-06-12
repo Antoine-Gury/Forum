@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"fmt"
 )
 
 type Discussion struct {
@@ -126,6 +127,9 @@ func Profil(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := GetUsernameByID(userResult.User.ID)
+	if username == "" {
+		username = GetUsernameByEmail(userResult.User.Email)
+	}
 
 	render(w, "profil.html", ProfilePageData{
 		Email:    userResult.User.Email,
@@ -193,4 +197,36 @@ func DiscussionPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.NotFound(w, r)
+}
+
+// DebugInsert handles a test insertion and returns JSON with result or error.
+func DebugInsert(w http.ResponseWriter, r *http.Request) {
+	// Accept POST form or query parameters for convenience
+	title := r.FormValue("title")
+	content := r.FormValue("content")
+	if title == "" {
+		title = r.URL.Query().Get("title")
+	}
+	if content == "" {
+		content = r.URL.Query().Get("content")
+	}
+
+	if title == "" || content == "" {
+		http.Error(w, "title and content required", http.StatusBadRequest)
+		return
+	}
+
+	author := "DebugUser"
+	d, err := InsertDiscussion(title, author, content)
+	if err != nil {
+		fmt.Printf("[debug] InsertDiscussion error: %v\n", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		return
+	}
+
+	fmt.Printf("[debug] Inserted discussion ID=%d title=%q\n", d.ID, d.Title)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"id": d.ID, "title": d.Title, "author": d.Author})
 }
