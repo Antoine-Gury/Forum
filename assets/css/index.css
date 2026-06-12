@@ -179,3 +179,66 @@ main {
     text-decoration: none;
 }
 
+/* Form styles to match the main theme */
+.form-card,
+.post form {
+    background: #0b0f14;
+    border: 1px solid #1a2230;
+    padding: 16px;
+}
+
+input, textarea {
+    width: 100%;
+    padding: 10px;
+    background: #0b0f14;
+    border: 1px solid #1a2230;
+    color: var(--color-3);
+    resize: vertical;
+}
+
+button[type="submit"] {
+    background: var(--color-4);
+    color: var(--color-1);
+    border: none;
+    padding: 10px 14px;
+    cursor: pointer;
+}
+
+/* Layout for discussion page: left-aligned main column and optional right sidebar */
+.discussion-layout {
+    display: flex;
+    gap: 24px;
+    max-width: 1100px;
+    margin-left: 20px; /* left-align the layout */
+    margin-right: 0;
+    padding: 30px 20px 60px;
+}
+
+.discussion-layout .left-col {
+    flex: 0 0 720px;
+}
+
+.discussion-layout .right-col {
+    flex: 1 1 280px;
+    min-width: 220px;
+}
+
+/* Ensure .post inside left column uses full width and aligns left */
+.discussion-layout .post {
+    margin: 0 0 12px 0;
+}
+
+/* Center the section title inside the left column */
+.discussion-layout .section-title {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+/* Center the page-level title for discussion pages */
+.page-center {
+    text-align: center;
+    margin: 18px auto;
+    width: 100%;
+    max-width: 1100px;
+}
+

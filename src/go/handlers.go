@@ -145,11 +145,17 @@ func Register(w http.ResponseWriter, r *http.Request) {
 func Create(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		title := r.FormValue("title")
-		author := r.FormValue("author")
-		if author == "" {
-			author = "Invité"
-		}
 		content := r.FormValue("content")
+
+		// Récupérer le pseudo depuis la session si l'utilisateur est connecté
+		author := "Invité"
+		if userResult, err := getAuthenticatedUser(w, r); err == nil {
+			if uname := GetUsernameByID(userResult.User.ID); uname != "" {
+				author = uname
+			} else if userResult.User.Email != "" {
+				author = userResult.User.Email
+			}
+		}
 
 		if title == "" || content == "" {
 			render(w, "create.html", CreatePageData{Error: "Titre et message requis."})

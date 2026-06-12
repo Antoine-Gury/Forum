@@ -1,36 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nouvelle discussion</title>
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/index.css">
+    <link rel="shortcut icon"  type="image/png" href="/assets/Picture/Favicone.png">
 </head>
 <body>
 
 <header>
-    <h1>Nouvelle discussion</h1>
+    <div class="logo">Forum WoW</div>
+    <div class="tagline">Discussions de la communauté</div>
 </header>
 
-<nav>
-    <a href="/">Accueil</a> | <a href="/profil">Profil</a>
+<nav class="main-nav">
+    <button id="homeButton" class="Accueil-button" type="button">Accueil</button>
+    <button id="NewDiscussionButton" class="Nouvelle-discussion-button" type="button">Nouvelle discussion</button>
+    <button id="profileButton" class="Profil-button nav-right" type="button">Profil</button>
 </nav>
 
 <main>
-    <section class="form-card">
-        <h2>Créer une nouvelle discussion</h2>
-        <form action="/create" method="POST">
-            <label for="author">Pseudo</label>
-            <input id="author" name="author" placeholder="Ton pseudo" required>
+    <div class="section-title">Créer une discussion</div>
 
-            <label for="title">Titre</label>
-            <input id="title" name="title" placeholder="Titre de la discussion" required>
-
-            <label for="content">Message</label>
-            <textarea id="content" name="content" placeholder="Écris ton message ici" rows="6" required></textarea>
-
-            <button type="submit">Publier</button>
+    <div class="post" style="display:block; padding:18px;">
+        <form action="/create" method="POST" style="display:flex; flex-direction:column; gap:10px;">
+            <!-- Le pseudo est fourni par le compte connecté côté serveur -->
+            <input id="title" name="title" placeholder="Titre de la discussion" required style="padding:10px; background:#0b0f14; border:1px solid #1a2230; color:var(--color-3);">
+            <textarea id="content" name="content" placeholder="Écris ton message ici" rows="6" required style="padding:10px; background:#0b0f14; border:1px solid #1a2230; color:var(--color-3);"></textarea>
+            <button type="submit" style="align-self:flex-start; padding:10px 14px; background:var(--color-4); color:var(--color-1); border:none; cursor:pointer;">Publier</button>
         </form>
-    </section>
+    </div>
+
 </main>
 
+<script src="/src/js/button.js"></script>
+<script src="/src/js/live.js"></script>
 </body>
 </html>

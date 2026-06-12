@@ -174,8 +174,31 @@ func GetUsernameByID(userID string) string {
 }
 
 func GetDiscussionsFromDB() ([]Discussion, error) {
+
 	if db == nil {
-		return nil, errors.New("database not initialized")
+		// fallback to Supabase REST API
+		rows, err := GetDiscussionsFromSupabase()
+		if err != nil {
+			return nil, errors.New("database not initialized")
+		}
+		var discussions []Discussion
+		for _, r := range rows {
+			var d Discussion
+			if v, ok := r["id"].(float64); ok {
+				d.ID = int(v)
+			}
+			if v, ok := r["title"].(string); ok {
+				d.Title = v
+			}
+			if v, ok := r["author"].(string); ok {
+				d.Author = v
+			}
+			if v, ok := r["content"].(string); ok {
+				d.Content = v
+			}
+			discussions = append(discussions, d)
+		}
+		return discussions, nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -201,7 +224,12 @@ func GetDiscussionsFromDB() ([]Discussion, error) {
 
 func InsertDiscussion(title, author, content string) (Discussion, error) {
 	if db == nil {
-		return Discussion{}, errors.New("database not initialized")
+		// Fallback to Supabase REST API when DB pool isn't initialized
+		if id, err := InsertDiscussionToSupabase(title, author, content); err == nil {
+			return Discussion{ID: id, Title: title, Author: author, Content: content}, nil
+		} else {
+			return Discussion{}, err
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

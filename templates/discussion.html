@@ -1,41 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>Discussion</title>
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discussion - {{.Title}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/index.css">
+    <link rel="shortcut icon"  type="image/png" href="/assets/Picture/Favicone.png">
 </head>
 <body>
 
 <header>
-    <h1>{{.Title}}</h1>
+    <div class="logo">Forum WoW</div>
+    <div class="tagline">Discussions de la communauté</div>
 </header>
 
-<nav>
-    <a href="/">Accueil</a> | <a href="/create">Nouvelle discussion</a>
+<nav class="main-nav">
+    <button id="homeButton" class="Accueil-button" type="button">Accueil</button>
+    <button id="NewDiscussionButton" class="Nouvelle-discussion-button" type="button">Nouvelle discussion</button>
+    <button id="profileButton" class="Profil-button nav-right" type="button">Profil</button>
 </nav>
 
-<main>
-    <section class="discussion-header">
-        <div class="discussion-title">
-            <h2>{{.Title}}</h2>
-            <div class="discussion-meta">
-                <span class="discussion-author">Publié par {{if .Author}}{{.Author}}{{else}}Invité{{end}}</span>
-                <span class="discussion-dot">•</span>
-                <span class="discussion-role">Membre du forum</span>
-            </div>
-        </div>
-    </section>
+<div class="section-title page-center">Discussion</div>
 
-    <section class="discussion-card">
-        <div class="discussion-post">
-            <div class="discussion-avatar">{{if .Author}}{{printf "%c" (index .Author 0)}}{{else}}I{{end}}</div>
-            <div class="discussion-body">
-                <div class="discussion-user">{{if .Author}}{{.Author}}{{else}}Invité{{end}}</div>
-                <div class="discussion-content">{{if .Content}}{{.Content}}{{else}}Aucun message publié pour le moment.{{end}}</div>
+<main class="discussion-layout">
+    <div class="left-col">
+
+        <div class="post" style="cursor:default">
+            <div class="post-avatar">{{if .Author}}{{printf "%c" (index .Author 0)}}{{else}}I{{end}}</div>
+            <div class="post-body">
+                <h3>{{.Title}}</h3>
+                <p style="white-space:normal; overflow:visible;">{{if .Content}}{{.Content}}{{else}}Aucun message publié pour le moment.{{end}}</p>
+                <div style="margin-top:8px; font-size:0.72rem; color:#7a8fa3;">Publié par {{if .Author}}{{.Author}}{{else}}Invité{{end}}</div>
             </div>
         </div>
-    </section>
+    </div>
+
+    <aside class="right-col">
+        <!-- Espace pour futurs widgets : profil, actions, etc. -->
+    </aside>
+
 </main>
 
+<script src="/src/js/button.js"></script>
+<script src="/src/js/live.js"></script>
 </body>
 </html>

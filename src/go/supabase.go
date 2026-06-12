@@ -337,3 +337,76 @@ func GetUserFromToken(token string) (supabaseAuthResponse, error) {
 
 	return result, nil
 }
+
+// InsertDiscussionToSupabase inserts a discussion via Supabase REST API when DB pool is not available.
+func InsertDiscussionToSupabase(title, author, content string) (int, error) {
+	supabaseURL := getSupabaseURL()
+	authKey, err := getSupabaseAuthKey()
+	if err != nil {
+		return 0, err
+	}
+
+	payload := map[string]string{"title": title, "author": author, "content": content}
+	body, _ := json.Marshal([]map[string]string{payload})
+
+	req, err := http.NewRequest(http.MethodPost, supabaseURL+"/rest/v1/discussions", bytes.NewReader(body))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Authorization", "Bearer "+authKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Prefer", "return=representation")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		return 0, fmt.Errorf("insert discussion failed: %s - %s", resp.Status, string(respBody))
+	}
+
+	// Supabase returns the inserted row(s) as JSON array. Try to parse the returned id.
+	var rows []struct{ ID int `json:"id"` }
+	if err := json.Unmarshal(respBody, &rows); err != nil || len(rows) == 0 {
+		return 0, nil
+	}
+	return rows[0].ID, nil
+}
+
+// GetDiscussionsFromSupabase fetches discussions via Supabase REST API.
+func GetDiscussionsFromSupabase() ([]map[string]any, error) {
+	supabaseURL := getSupabaseURL()
+	authKey, err := getSupabaseAuthKey()
+	if err != nil {
+		return nil, err
+	}
+
+	// Request specific columns and order by id desc
+	req, err := http.NewRequest(http.MethodGet, supabaseURL+"/rest/v1/discussions?select=id,title,author,content&order=id.desc", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("apikey", authKey)
+	req.Header.Set("Authorization", "Bearer "+authKey)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("fetch discussions failed: %s - %s", resp.Status, string(respBody))
+	}
+
+	var rows []map[string]any
+	if err := json.Unmarshal(respBody, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
