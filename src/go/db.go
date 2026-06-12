@@ -133,7 +133,7 @@ func SaveProfile(userID, email, username string) error {
 		VALUES ($1, $2, $3, NOW())
 		ON CONFLICT (id) DO UPDATE SET
 			email = EXCLUDED.email,
-			username = EXCLUDED.username,
+			username = COALESCE(NULLIF(EXCLUDED.username, ''), profiles.username),
 			updated_at = NOW()
 	`, userID, email, username)
 	return err
@@ -173,6 +173,22 @@ func GetUsernameByID(userID string) string {
 	return username
 }
 
+func GetUsernameByEmail(email string) string {
+	if db == nil {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var username string
+	err := db.QueryRow(ctx,
+		"SELECT COALESCE(username, '') FROM profiles WHERE email = $1", email,
+	).Scan(&username)
+	if err != nil {
+		return ""
+	}
+	return username
+}
 func GetDiscussionsFromDB() ([]Discussion, error) {
 	if db == nil {
 		return nil, errors.New("database not initialized")

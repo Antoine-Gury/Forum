@@ -126,6 +126,9 @@ func Profil(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := GetUsernameByID(userResult.User.ID)
+	if username == "" {
+		username = GetUsernameByEmail(userResult.User.Email)
+	}
 
 	render(w, "profil.html", ProfilePageData{
 		Email:    userResult.User.Email,
