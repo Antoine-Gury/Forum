@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -10,10 +11,13 @@ import (
 )
 
 type Discussion struct {
-	ID      int
-	Title   string
-	Author  string
-	Content string
+	ID        int
+	Title     string
+	Author    string
+	Content   string
+	AvatarURL string
+	Score     int
+	UserVote  int
 }
 
 type HomePageData struct {
@@ -22,18 +26,21 @@ type HomePageData struct {
 }
 
 type ProfilePageData struct {
-	Email    string
-	ID       string
-	Username string
-	Error    string
+	Email       string
+	ID          string
+	Username    string
+	AvatarURL   string
+	AvatarError string
+	Error       string
 }
 
 type CreatePageData struct {
-	Error string
+	Error  string
+	Author string
 }
 
 var defaultDiscussions = []Discussion{
-	{ID: 0, Title: "Raid ICC stratégie", Author: "Ezekiel", Content: "Comment battre le Roi Liche ?"},
+	{ID: 0, Title: "Raid ICC stratégie", Author: "Ezekiel", Content: "Comment battre le Roi Liche ?", AvatarURL: ""},
 }
 
 var sseClients = make(map[chan Discussion]struct{})
@@ -47,7 +54,6 @@ func render(w http.ResponseWriter, page string, data interface{}) {
 func broadcastNewDiscussion(d Discussion) {
 	sseClientsMu.Lock()
 	defer sseClientsMu.Unlock()
-
 	for ch := range sseClients {
 		select {
 		case ch <- d:
@@ -74,7 +80,6 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -85,7 +90,6 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	defer removeSSEClient(ch)
 
 	notify := r.Context().Done()
-
 	for {
 		select {
 		case <-notify:
@@ -102,8 +106,16 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getDiscussions() []Discussion {
-	discussions, err := GetDiscussionsFromDB()
+func currentUserID(w http.ResponseWriter, r *http.Request) string {
+	userResult, err := getAuthenticatedUser(w, r)
+	if err != nil {
+		return ""
+	}
+	return userResult.User.ID
+}
+
+func getDiscussions(userID string) []Discussion {
+	discussions, err := GetDiscussionsFromDB(userID)
 	if err != nil || len(discussions) == 0 {
 		return defaultDiscussions
 	}
@@ -112,8 +124,9 @@ func getDiscussions() []Discussion {
 
 func Home(w http.ResponseWriter, r *http.Request) {
 	message := r.URL.Query().Get("message")
+	userID := currentUserID(w, r)
 	render(w, "index.html", HomePageData{
-		Discussions: getDiscussions(),
+		Discussions: getDiscussions(userID),
 		Message:     message,
 	})
 }
@@ -125,15 +138,18 @@ func Profil(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := GetUsernameByID(userResult.User.ID)
+	email := userResult.User.Email
+	username := GetUsernameByEmail(email)
 	if username == "" {
-		username = GetUsernameByEmail(userResult.User.Email)
+		username = GetUsernameByID(userResult.User.ID)
 	}
+	avatarURL := GetAvatarURLByEmail(email)
 
 	render(w, "profil.html", ProfilePageData{
-		Email:    userResult.User.Email,
-		ID:       userResult.User.ID,
-		Username: username,
+		Email:     email,
+		ID:        userResult.User.ID,
+		Username:  username,
+		AvatarURL: avatarURL,
 	})
 }
 
@@ -145,23 +161,53 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	render(w, "register.html", nil)
 }
 
+func resolveAuthor(w http.ResponseWriter, r *http.Request) (string, string) {
+	userResult, err := getAuthenticatedUser(w, r)
+	if err != nil {
+		return "Invité", ""
+	}
+
+	email := userResult.User.Email
+	userID := userResult.User.ID
+
+	username := GetUsernameByEmail(email)
+	if username == "" {
+		username = GetUsernameByID(userID)
+	}
+	if username == "" && email != "" {
+		for i, c := range email {
+			if c == '@' {
+				username = email[:i]
+				break
+			}
+		}
+	}
+	if username == "" {
+		username = "Invité"
+	}
+
+	avatarURL := GetAvatarURLByEmail(email)
+	return username, avatarURL
+}
+
 func Create(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		title := r.FormValue("title")
-		author := r.FormValue("author")
-		if author == "" {
-			author = "Invité"
-		}
 		content := r.FormValue("content")
 
 		if title == "" || content == "" {
-			render(w, "create.html", CreatePageData{Error: "Titre et message requis."})
+			author, _ := resolveAuthor(w, r)
+			render(w, "create.html", CreatePageData{Error: "Titre et message requis.", Author: author})
 			return
 		}
 
-		newDiscussion, err := InsertDiscussion(title, author, content)
+		author, avatarURL := resolveAuthor(w, r)
+		fmt.Printf("[Create] title=%q author=%q avatar=%q\n", title, author, avatarURL)
+
+		newDiscussion, err := InsertDiscussion(title, author, content, avatarURL)
 		if err != nil {
-			render(w, "create.html", CreatePageData{Error: "Impossible d'enregistrer la discussion."})
+			fmt.Printf("[Create] InsertDiscussion error: %v\n", err)
+			render(w, "create.html", CreatePageData{Error: "Impossible d'enregistrer la discussion.", Author: author})
 			return
 		}
 
@@ -170,24 +216,71 @@ func Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render(w, "create.html", nil)
+	author, _ := resolveAuthor(w, r)
+	render(w, "create.html", CreatePageData{Author: author})
 }
 
 func DiscussionPage(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	id, _ := strconv.Atoi(idStr)
+	userID := currentUserID(w, r)
 
-	if discussion, err := GetDiscussionByID(id); err == nil {
+	if discussion, err := GetDiscussionByID(id, userID); err == nil {
 		render(w, "discussion.html", discussion)
 		return
 	}
-
-	for _, d := range getDiscussions() {
+	for _, d := range getDiscussions(userID) {
 		if d.ID == id {
 			render(w, "discussion.html", d)
 			return
 		}
 	}
-
 	http.NotFound(w, r)
+}
+
+type voteResponse struct {
+	Score    int `json:"score"`
+	UserVote int `json:"user_vote"`
+}
+
+func Vote(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userResult, err := getAuthenticatedUser(w, r)
+	if err != nil || userResult.User.ID == "" {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	id, err := strconv.Atoi(r.FormValue("discussion_id"))
+	if err != nil {
+		http.Error(w, "id invalide", http.StatusBadRequest)
+		return
+	}
+
+	value, err := strconv.Atoi(r.FormValue("value"))
+	if err != nil || (value != -1 && value != 1) {
+		http.Error(w, "valeur invalide", http.StatusBadRequest)
+		return
+	}
+
+	current := GetUserVote(id, userResult.User.ID)
+	newValue := value
+	if current == value {
+		newValue = 0
+	}
+
+	if _, err := UpsertVote(id, userResult.User.ID, newValue); err != nil {
+		http.Error(w, "erreur serveur", http.StatusInternalServerError)
+		return
+	}
+
+	redirectTo := r.FormValue("redirect")
+	if redirectTo == "" {
+		redirectTo = "/"
+	}
+	http.Redirect(w, r, redirectTo, http.StatusSeeOther)
 }

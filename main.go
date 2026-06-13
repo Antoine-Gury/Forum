@@ -58,6 +58,7 @@ func main() {
 	}
 
 	http.HandleFunc("/auth/callback", handlers.AuthCallbackHandler)
+	http.HandleFunc("/vote", handlers.Vote)
 	http.HandleFunc("/", handlers.Home)
 	http.HandleFunc("/index.html", handlers.Home)
 	http.HandleFunc("/profil", handlers.Profil)
@@ -73,6 +74,7 @@ func main() {
 	http.HandleFunc("/new-discussion", handlers.Create)
 	http.HandleFunc("/events", handlers.Events)
 	http.HandleFunc("/discussion", handlers.DiscussionPage)
+	http.HandleFunc("/upload-avatar", handlers.UploadAvatar)
 
 	fmt.Printf("http://localhost:%s\n", port)
 	err := http.ListenAndServe(":"+port, nil)

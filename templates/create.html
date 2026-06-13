@@ -17,9 +17,15 @@
 <main>
     <section class="form-card">
         <h2>Créer une nouvelle discussion</h2>
+
+        {{if .Error}}
+        <p class="error">{{.Error}}</p>
+        {{end}}
+
         <form action="/create" method="POST">
-            <label for="author">Pseudo</label>
-            <input id="author" name="author" placeholder="Ton pseudo" required>
+            {{if .Author}}
+            <p class="author-info">Posté en tant que : <strong>{{.Author}}</strong></p>
+            {{end}}
 
             <label for="title">Titre</label>
             <input id="title" name="title" placeholder="Titre de la discussion" required>

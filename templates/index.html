@@ -7,7 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/index.css">
-    <link rel="shortcut icon"  type="image/png" href="/assets/Picture/Favicone.png">
+    <link rel="stylesheet" href="/assets/css/Avatar.css">
+    <link rel="stylesheet" href="/assets/css/vote.css">
+    <link rel="shortcut icon" type="image/png" href="/assets/Picture/Favicone.png">
 </head>
 <body>
 
@@ -32,9 +34,17 @@
     <div id="discussions-list">
         {{range .Discussions}}
         <div class="post">
-            <div class="post-avatar">⚔</div>
+            
+            <div class="post-avatar">
+                {{if .AvatarURL}}
+                <img src="{{.AvatarURL}}" alt="avatar" class="post-avatar-img">
+                {{else}}
+                ⚔
+                {{end}}
+            </div>
             <div class="post-body">
                 <h3><a href="/discussion?id={{.ID}}">{{.Title}}</a></h3>
+                <p class="post-meta">Par <strong>{{.Author}}</strong></p>
                 <p>{{.Content}}</p>
             </div>
         </div>
