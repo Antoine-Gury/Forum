@@ -345,13 +345,18 @@ func InsertDiscussionToSupabase(title, author, content string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	// Try inserting with English column names first, then with French variants
-	variants := [][]map[string]string{{{"title": title, "author": author, "content": content}}, {{"titre": title, "auteur": author, "contenu": content}}, {{"titre": title, "author": author, "contenu": content}}}
+	// Try inserting with English column names first, then without author if required.
+	variants := []map[string]string{
+		{"title": title, "author": author, "content": content},
+		{"title": title, "content": content},
+		{"titre": title, "auteur": author, "contenu": content},
+		{"titre": title, "contenu": content},
+	}
 
 	var respBody []byte
 	var lastErr error
 	for _, v := range variants {
-		body, _ := json.Marshal(v)
+		body, _ := json.Marshal([]map[string]string{v})
 
 		req, err := http.NewRequest(http.MethodPost, supabaseURL+"/rest/v1/discussions", bytes.NewReader(body))
 		if err != nil {
@@ -380,7 +385,7 @@ func InsertDiscussionToSupabase(title, author, content string) (int, error) {
 		// success
 		var rows []struct{ ID int `json:"id"` }
 		if err := json.Unmarshal(respBody, &rows); err != nil || len(rows) == 0 {
-			// try to parse French id key
+			// try to parse French/English id key
 			var rowsAlt []map[string]any
 			if err := json.Unmarshal(respBody, &rowsAlt); err == nil && len(rowsAlt) > 0 {
 				if v, ok := rowsAlt[0]["id"].(float64); ok {
@@ -392,8 +397,9 @@ func InsertDiscussionToSupabase(title, author, content string) (int, error) {
 					return int(v), nil
 				}
 			}
-			fmt.Printf("[supabase] insert returned unparseable body: %s\n", string(respBody))
-			return 0, nil
+			parseErr := fmt.Errorf("unable to parse insert response: %s", string(respBody))
+			fmt.Printf("[supabase] %v\n", parseErr)
+			return 0, parseErr
 		}
 		fmt.Printf("[supabase] inserted row id: %d\n", rows[0].ID)
 		return rows[0].ID, nil

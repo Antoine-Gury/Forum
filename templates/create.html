@@ -25,6 +25,12 @@
 <main>
     <div class="section-title">Créer une discussion</div>
 
+    {{if .Error}}
+    <div class="form-error" style="margin-bottom:12px; padding:12px; background:#5a1b1b; color:#fff; border:1px solid #8b0000; border-radius:6px;">
+        {{.Error}}
+    </div>
+    {{end}}
+
     <div class="post" style="display:block; padding:18px;">
         <form action="/create" method="POST" style="display:flex; flex-direction:column; gap:10px;">
             <!-- Le pseudo est fourni par le compte connecté côté serveur -->

@@ -5,12 +5,90 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var db *pgxpool.Pool
+
+var discussionSchema = struct {
+	idCol      string
+	titleCol   string
+	authorCol  string
+	contentCol string
+	hasAuthor  bool
+	hasTitle   bool
+	hasContent bool
+}{
+	idCol:      "id",
+	titleCol:   "title",
+	authorCol:  "author",
+	contentCol: "content",
+	hasAuthor:  true,
+	hasTitle:   true,
+	hasContent: true,
+}
+
+func loadDiscussionSchema(ctx context.Context, pool *pgxpool.Pool) error {
+	rows, err := pool.Query(ctx, `
+		SELECT LOWER(column_name)
+		FROM information_schema.columns
+		WHERE table_name = 'discussions'
+		AND table_schema = 'public'
+	`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	hasID := false
+	hasTitle := false
+	hasAuthor := false
+	hasContent := false
+
+	for rows.Next() {
+		var column string
+		if err := rows.Scan(&column); err != nil {
+			return err
+		}
+		switch column {
+		case "id", "identifiant":
+			discussionSchema.idCol = column
+			hasID = true
+		case "title", "titre":
+			discussionSchema.titleCol = column
+			hasTitle = true
+		case "author", "auteur":
+			discussionSchema.authorCol = column
+			hasAuthor = true
+		case "content", "contenu":
+			discussionSchema.contentCol = column
+			hasContent = true
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !hasID {
+		return errors.New("discussions table missing id/identifiant column")
+	}
+	if !hasTitle {
+		return errors.New("discussions table missing title/titre column")
+	}
+	if !hasContent {
+		return errors.New("discussions table missing content/contenu column")
+	}
+
+	discussionSchema.hasTitle = hasTitle
+	discussionSchema.hasAuthor = hasAuthor
+	discussionSchema.hasContent = hasContent
+	fmt.Printf("[db] discussion schema: id=%s title=%s author=%s content=%s\n", discussionSchema.idCol, discussionSchema.titleCol, discussionSchema.authorCol, discussionSchema.contentCol)
+	return nil
+}
 
 func emailAlreadyExists(email string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -47,6 +125,11 @@ func InitDB() error {
 
 	db = pool
 	if err := ensureDiscussionTable(ctx, pool); err != nil {
+		pool.Close()
+		return err
+	}
+
+	if err := loadDiscussionSchema(ctx, pool); err != nil {
 		pool.Close()
 		return err
 	}
@@ -228,7 +311,19 @@ func GetDiscussionsFromDB() ([]Discussion, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	rows, err := db.Query(ctx, "SELECT id, title, author, content FROM discussions ORDER BY id DESC")
+	cols := []string{discussionSchema.idCol}
+	if discussionSchema.hasTitle {
+		cols = append(cols, discussionSchema.titleCol)
+	}
+	if discussionSchema.hasAuthor {
+		cols = append(cols, discussionSchema.authorCol)
+	}
+	if discussionSchema.hasContent {
+		cols = append(cols, discussionSchema.contentCol)
+	}
+
+	query := fmt.Sprintf("SELECT %s FROM discussions ORDER BY %s DESC", strings.Join(cols, ", "), discussionSchema.idCol)
+	rows, err := db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +332,17 @@ func GetDiscussionsFromDB() ([]Discussion, error) {
 	var discussions []Discussion
 	for rows.Next() {
 		var d Discussion
-		if err := rows.Scan(&d.ID, &d.Title, &d.Author, &d.Content); err != nil {
+		scanArgs := []interface{}{&d.ID}
+		if discussionSchema.hasTitle {
+			scanArgs = append(scanArgs, &d.Title)
+		}
+		if discussionSchema.hasAuthor {
+			scanArgs = append(scanArgs, &d.Author)
+		}
+		if discussionSchema.hasContent {
+			scanArgs = append(scanArgs, &d.Content)
+		}
+		if err := rows.Scan(scanArgs...); err != nil {
 			return nil, err
 		}
 		discussions = append(discussions, d)
@@ -260,7 +365,20 @@ func InsertDiscussion(title, author, content string) (Discussion, error) {
 	defer cancel()
 
 	var id int
-	err := db.QueryRow(ctx, "INSERT INTO discussions (title, author, content) VALUES ($1, $2, $3) RETURNING id", title, author, content).Scan(&id)
+	cols := []string{discussionSchema.titleCol, discussionSchema.contentCol}
+	args := []interface{}{title, content}
+	if discussionSchema.hasAuthor {
+		cols = append(cols, discussionSchema.authorCol)
+		args = append(args, author)
+	}
+
+	placeholders := make([]string, len(cols))
+	for i := range placeholders {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+	}
+
+	query := fmt.Sprintf("INSERT INTO discussions (%s) VALUES (%s) RETURNING %s", strings.Join(cols, ", "), strings.Join(placeholders, ", "), discussionSchema.idCol)
+	err := db.QueryRow(ctx, query, args...).Scan(&id)
 	if err != nil {
 		return Discussion{}, err
 	}
@@ -276,8 +394,32 @@ func GetDiscussionByID(id int) (Discussion, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	cols := []string{discussionSchema.idCol}
+	if discussionSchema.hasTitle {
+		cols = append(cols, discussionSchema.titleCol)
+	}
+	if discussionSchema.hasAuthor {
+		cols = append(cols, discussionSchema.authorCol)
+	}
+	if discussionSchema.hasContent {
+		cols = append(cols, discussionSchema.contentCol)
+	}
+
+	query := fmt.Sprintf("SELECT %s FROM discussions WHERE %s = $1", strings.Join(cols, ", "), discussionSchema.idCol)
+
 	var d Discussion
-	err := db.QueryRow(ctx, "SELECT id, title, author, content FROM discussions WHERE id = $1", id).Scan(&d.ID, &d.Title, &d.Author, &d.Content)
+	scanArgs := []interface{}{&d.ID}
+	if discussionSchema.hasTitle {
+		scanArgs = append(scanArgs, &d.Title)
+	}
+	if discussionSchema.hasAuthor {
+		scanArgs = append(scanArgs, &d.Author)
+	}
+	if discussionSchema.hasContent {
+		scanArgs = append(scanArgs, &d.Content)
+	}
+
+	err := db.QueryRow(ctx, query, id).Scan(scanArgs...)
 	return d, err
 }
 

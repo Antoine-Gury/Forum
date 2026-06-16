@@ -168,7 +168,8 @@ func Create(w http.ResponseWriter, r *http.Request) {
 
 		newDiscussion, err := InsertDiscussion(title, author, content)
 		if err != nil {
-			render(w, "create.html", CreatePageData{Error: "Impossible d'enregistrer la discussion."})
+			fmt.Printf("[create] InsertDiscussion error: %v\n", err)
+			render(w, "create.html", CreatePageData{Error: fmt.Sprintf("Impossible d'enregistrer la discussion: %v", err)})
 			return
 		}
 
