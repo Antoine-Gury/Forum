@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"strings"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -18,6 +19,16 @@ type Discussion struct {
 	AvatarURL string
 	Score     int
 	UserVote  int
+	Replies   []Reply
+}
+
+type Reply struct {
+	ID           int
+	DiscussionID int
+	Author       string
+	Content      string
+	AvatarURL    string
+	CreatedAt    string
 }
 
 type HomePageData struct {
@@ -246,6 +257,39 @@ func DiscussionPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.NotFound(w, r)
+}
+
+func CreateReply(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userResult, err := getAuthenticatedUser(w, r)
+	if err != nil || userResult.User.ID == "" {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	discID, err := strconv.Atoi(r.FormValue("discussion_id"))
+	if err != nil {
+		http.Error(w, "id invalide", http.StatusBadRequest)
+		return
+	}
+
+	content := r.FormValue("content")
+	if strings.TrimSpace(content) == "" {
+		http.Redirect(w, r, "/discussion?id="+strconv.Itoa(discID), http.StatusSeeOther)
+		return
+	}
+
+	author, avatar := resolveAuthor(w, r)
+	if _, err := InsertReply(discID, author, content, avatar); err != nil {
+		http.Error(w, "erreur serveur", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/discussion?id="+strconv.Itoa(discID), http.StatusSeeOther)
 }
 
 type voteResponse struct {

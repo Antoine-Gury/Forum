@@ -59,6 +59,34 @@
         <p class="discussion-meta">Posté par <strong>{{.Author}}</strong></p>
         <div class="discussion-content">{{.Content}}</div>
     </div>
+    <section class="replies-section">
+        <h2>Réponses</h2>
+        {{range .Replies}}
+        <div class="discussion-card reply-card">
+            <div class="discussion-top">
+                <div class="discussion-avatar">
+                    {{if .AvatarURL}}
+                    <img src="{{.AvatarURL}}" alt="avatar" class="discussion-avatar-img">
+                    {{else}}
+                    ⚔
+                    {{end}}
+                </div>
+            </div>
+            <p class="discussion-meta">Posté par <strong>{{.Author}}</strong> · <span class="reply-date">{{.CreatedAt}}</span></p>
+            <div class="discussion-content">{{.Content}}</div>
+        </div>
+        {{else}}
+        <p>Aucune réponse pour le moment.</p>
+        {{end}}
+
+        <div class="reply-form-wrap">
+            <form action="/reply" method="POST" class="reply-form">
+                <input type="hidden" name="discussion_id" value="{{.ID}}">
+                <textarea name="content" rows="4" placeholder="Écrire une réponse..." required></textarea>
+                <button type="submit" class="reply-submit">Répondre</button>
+            </form>
+        </div>
+    </section>
 </main>
 
 <script src="/src/js/button.js"></script>

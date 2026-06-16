@@ -73,6 +73,7 @@ func main() {
 	http.HandleFunc("/create", handlers.Create)
 	http.HandleFunc("/new-discussion", handlers.Create)
 	http.HandleFunc("/events", handlers.Events)
+	http.HandleFunc("/reply", handlers.CreateReply)
 	http.HandleFunc("/discussion", handlers.DiscussionPage)
 	http.HandleFunc("/upload-avatar", handlers.UploadAvatar)
 
