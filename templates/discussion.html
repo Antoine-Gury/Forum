@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discussion - {{.Title}}</title>
+    <title>{{.Title}} — Forum WoW</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/index.css">
-    <link rel="shortcut icon"  type="image/png" href="/assets/Picture/Favicone.png">
+    <link rel="stylesheet" href="/assets/css/discussion.css">
+    <link rel="stylesheet" href="/assets/css/Avatar.css">
+    <link rel="stylesheet" href="/assets/css/vote.css">
+    <link rel="shortcut icon" type="image/png" href="/assets/Picture/Favicone.png">
 </head>
 <body>
 
@@ -22,28 +25,42 @@
     <button id="profileButton" class="Profil-button nav-right" type="button">Profil</button>
 </nav>
 
-<div class="section-title page-center">Discussion</div>
-
-<main class="discussion-layout">
-    <div class="left-col">
-
-        <div class="post" style="cursor:default">
-            <div class="post-avatar">{{if .Author}}{{printf "%c" (index .Author 0)}}{{else}}I{{end}}</div>
-            <div class="post-body">
-                <h3>{{.Title}}</h3>
-                <p style="white-space:normal; overflow:visible;">{{if .Content}}{{.Content}}{{else}}Aucun message publié pour le moment.{{end}}</p>
-                <div style="margin-top:8px; font-size:0.72rem; color:#7a8fa3;">Publié par {{if .Author}}{{.Author}}{{else}}Invité{{end}}</div>
-            </div>
-        </div>
+<main>
+    <div class="back-link-wrap">
+        <a class="back-link" href="/">← Retour aux discussions</a>
     </div>
 
-    <aside class="right-col">
-        <!-- Espace pour futurs widgets : profil, actions, etc. -->
-    </aside>
-
+    <div class="discussion-card">
+        <div class="discussion-top">
+           <div class="vote-box">
+                <form action="/vote" method="POST">
+                    <input type="hidden" name="discussion_id" value="{{.ID}}">
+                    <input type="hidden" name="value" value="1">
+                    <input type="hidden" name="redirect" value="/discussion?id={{.ID}}">
+                    <button class="vote-btn upvote {{if eq .UserVote 1}}active{{end}}" type="submit">▲</button>
+                </form>
+                <span class="vote-score">{{.Score}}</span>
+                <form action="/vote" method="POST">
+                    <input type="hidden" name="discussion_id" value="{{.ID}}">
+                    <input type="hidden" name="value" value="-1">
+                    <input type="hidden" name="redirect" value="/discussion?id={{.ID}}">
+                    <button class="vote-btn downvote {{if eq .UserVote -1}}active{{end}}" type="submit">▼</button>
+                </form>
+            </div>
+            <div class="discussion-avatar">
+                {{if .AvatarURL}}
+                <img src="{{.AvatarURL}}" alt="avatar" class="discussion-avatar-img">
+                {{else}}
+                ⚔
+                {{end}}
+            </div>
+        </div>
+        <h1 class="discussion-title">{{.Title}}</h1>
+        <p class="discussion-meta">Posté par <strong>{{.Author}}</strong></p>
+        <div class="discussion-content">{{.Content}}</div>
+    </div>
 </main>
 
 <script src="/src/js/button.js"></script>
-<script src="/src/js/live.js"></script>
 </body>
 </html>

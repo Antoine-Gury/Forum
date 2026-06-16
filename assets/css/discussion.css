@@ -1,0 +1,73 @@
+.back-link-wrap {
+    max-width: 860px;
+    margin: 28px auto 0;
+    padding: 0 20px;
+}
+
+.back-link {
+    color: var(--color-2);
+    text-decoration: none;
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: color 0.15s;
+}
+
+.back-link:hover {
+    color: var(--color-4);
+}
+
+.discussion-card {
+    background: #0b0f14;
+    border: 1px solid #1a2230;
+    border-left: 3px solid var(--color-5);
+    max-width: 860px;
+    margin: 16px auto 60px;
+    padding: 32px 36px;
+}
+
+.discussion-avatar {
+    width: 52px;
+    height: 52px;
+    background: #1a2636;
+    border: 1px solid var(--color-5);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cinzel', serif;
+    font-size: 1.3rem;
+    color: var(--color-4);
+}
+
+.discussion-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--color-4);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.discussion-meta {
+    font-size: 0.72rem;
+    color: var(--color-2);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #1a2230;
+}
+
+.discussion-meta strong {
+    color: var(--color-4);
+}
+
+.discussion-content {
+    font-size: 0.9rem;
+    color: #c0ccd8;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}

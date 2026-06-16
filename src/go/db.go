@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -124,6 +123,7 @@ func InitDB() error {
 	}
 
 	db = pool
+
 	if err := ensureDiscussionTable(ctx, pool); err != nil {
 		pool.Close()
 		return err
@@ -139,6 +139,11 @@ func InitDB() error {
 		return err
 	}
 
+	if err := ensureVotesTable(ctx, pool); err != nil {
+		pool.Close()
+		return err
+	}
+
 	return nil
 }
 
@@ -148,10 +153,16 @@ func ensureDiscussionTable(ctx context.Context, pool *pgxpool.Pool) error {
 			id SERIAL PRIMARY KEY,
 			title TEXT NOT NULL,
 			author TEXT NOT NULL DEFAULT 'Invité',
-			content TEXT NOT NULL
+			content TEXT NOT NULL,
+			avatar_url TEXT NOT NULL DEFAULT ''
 		)
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+	_, _ = pool.Exec(ctx, `ALTER TABLE discussions ADD COLUMN IF NOT EXISTS author TEXT NOT NULL DEFAULT 'Invité'`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE discussions ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT ''`)
+	return nil
 }
 
 func ensureAuthTables(ctx context.Context, pool *pgxpool.Pool) error {
@@ -178,6 +189,7 @@ func ensureAuthTables(ctx context.Context, pool *pgxpool.Pool) error {
 			id TEXT PRIMARY KEY,
 			email TEXT NOT NULL,
 			username TEXT,
+			avatar_url TEXT,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)
@@ -185,6 +197,8 @@ func ensureAuthTables(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return fmt.Errorf("create profiles table: %w", err)
 	}
+
+	_, _ = pool.Exec(ctx, `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT`)
 
 	_, err = pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS password_recovery_requests (
@@ -198,6 +212,67 @@ func ensureAuthTables(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 
 	return nil
+}
+
+func ensureVotesTable(ctx context.Context, pool *pgxpool.Pool) error {
+	_, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS discussion_votes (
+			discussion_id INT NOT NULL REFERENCES discussions(id) ON DELETE CASCADE,
+			user_id TEXT NOT NULL,
+			value SMALLINT NOT NULL CHECK (value IN (-1,1)),
+			PRIMARY KEY (discussion_id, user_id)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("create discussion_votes table: %w", err)
+	}
+	return nil
+}
+
+func UpsertVote(discussionID int, userID string, value int) (int, error) {
+	if db == nil {
+		return 0, errors.New("database not initialized")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if value == 0 {
+		if _, err := db.Exec(ctx,
+			`DELETE FROM discussion_votes WHERE discussion_id=$1 AND user_id=$2`,
+			discussionID, userID); err != nil {
+			return 0, err
+		}
+	} else {
+		if _, err := db.Exec(ctx, `
+			INSERT INTO discussion_votes (discussion_id, user_id, value)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (discussion_id, user_id) DO UPDATE SET value = EXCLUDED.value
+		`, discussionID, userID, value); err != nil {
+			return 0, err
+		}
+	}
+
+	var score int
+	err := db.QueryRow(ctx,
+		`SELECT COALESCE(SUM(value),0) FROM discussion_votes WHERE discussion_id=$1`,
+		discussionID,
+	).Scan(&score)
+	return score, err
+}
+
+func GetUserVote(discussionID int, userID string) int {
+	if db == nil || userID == "" {
+		return 0
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var v int
+	_ = db.QueryRow(ctx,
+		`SELECT value FROM discussion_votes WHERE discussion_id=$1 AND user_id=$2`,
+		discussionID, userID,
+	).Scan(&v)
+	return v
 }
 
 func SaveProfile(userID, email, username string) error {
@@ -222,6 +297,33 @@ func SaveProfile(userID, email, username string) error {
 	return err
 }
 
+func SaveAvatarURL(email, avatarURL string) error {
+	if db == nil {
+		return errors.New("database not initialized")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := db.Exec(ctx, `
+		UPDATE profiles SET avatar_url = $1, updated_at = NOW() WHERE email = $2
+	`, avatarURL, email)
+	return err
+}
+
+func GetAvatarURLByEmail(email string) string {
+	if db == nil || email == "" {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var url string
+	_ = db.QueryRow(ctx,
+		"SELECT COALESCE(avatar_url, '') FROM profiles WHERE email = $1", email,
+	).Scan(&url)
+	return url
+}
+
 func LogPasswordRecovery(email string) error {
 	if db == nil {
 		return errors.New("database not initialized")
@@ -240,40 +342,36 @@ func LogPasswordRecovery(email string) error {
 }
 
 func GetUsernameByID(userID string) string {
-	if db == nil {
+	if db == nil || userID == "" {
 		return ""
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var username string
-	err := db.QueryRow(ctx,
+	_ = db.QueryRow(ctx,
 		"SELECT COALESCE(username, '') FROM profiles WHERE id = $1", userID,
 	).Scan(&username)
-	if err != nil {
-		return ""
-	}
 	return username
 }
 
 func GetUsernameByEmail(email string) string {
-	if db == nil {
+	if db == nil || email == "" {
 		return ""
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var username string
-	err := db.QueryRow(ctx,
+	_ = db.QueryRow(ctx,
 		"SELECT COALESCE(username, '') FROM profiles WHERE email = $1", email,
 	).Scan(&username)
-	if err != nil {
-		return ""
-	}
 	return username
 }
-func GetDiscussionsFromDB() ([]Discussion, error) {
 
+// GetDiscussionsFromDB récupère les discussions en joignant l'avatar du profil
+// par username, ainsi que le score de vote et le vote de l'utilisateur courant.
+func GetDiscussionsFromDB(userID string) ([]Discussion, error) {
 	if db == nil {
 		// fallback to Supabase REST API
 		rows, err := GetDiscussionsFromSupabase()
@@ -311,19 +409,25 @@ func GetDiscussionsFromDB() ([]Discussion, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	cols := []string{discussionSchema.idCol}
-	if discussionSchema.hasTitle {
-		cols = append(cols, discussionSchema.titleCol)
-	}
-	if discussionSchema.hasAuthor {
-		cols = append(cols, discussionSchema.authorCol)
-	}
-	if discussionSchema.hasContent {
-		cols = append(cols, discussionSchema.contentCol)
-	}
-
-	query := fmt.Sprintf("SELECT %s FROM discussions ORDER BY %s DESC", strings.Join(cols, ", "), discussionSchema.idCol)
-	rows, err := db.Query(ctx, query)
+	rows, err := db.Query(ctx, `
+		SELECT
+			d.id,
+			d.title,
+			d.author,
+			d.content,
+			COALESCE(NULLIF(p.avatar_url, ''), d.avatar_url, '') AS avatar_url,
+			COALESCE(v.score, 0) AS score,
+			COALESCE(uv.value, 0) AS user_vote
+		FROM discussions d
+		LEFT JOIN profiles p ON p.username = d.author
+		LEFT JOIN (
+			SELECT discussion_id, SUM(value) AS score
+			FROM discussion_votes
+			GROUP BY discussion_id
+		) v ON v.discussion_id = d.id
+		LEFT JOIN discussion_votes uv ON uv.discussion_id = d.id AND uv.user_id = $1
+		ORDER BY COALESCE(v.score, 0) DESC, d.id DESC
+	`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -332,17 +436,7 @@ func GetDiscussionsFromDB() ([]Discussion, error) {
 	var discussions []Discussion
 	for rows.Next() {
 		var d Discussion
-		scanArgs := []interface{}{&d.ID}
-		if discussionSchema.hasTitle {
-			scanArgs = append(scanArgs, &d.Title)
-		}
-		if discussionSchema.hasAuthor {
-			scanArgs = append(scanArgs, &d.Author)
-		}
-		if discussionSchema.hasContent {
-			scanArgs = append(scanArgs, &d.Content)
-		}
-		if err := rows.Scan(scanArgs...); err != nil {
+		if err := rows.Scan(&d.ID, &d.Title, &d.Author, &d.Content, &d.AvatarURL, &d.Score, &d.UserVote); err != nil {
 			return nil, err
 		}
 		discussions = append(discussions, d)
@@ -351,7 +445,7 @@ func GetDiscussionsFromDB() ([]Discussion, error) {
 	return discussions, rows.Err()
 }
 
-func InsertDiscussion(title, author, content string) (Discussion, error) {
+func InsertDiscussion(title, author, content, avatarURL string) (Discussion, error) {
 	if db == nil {
 		// Fallback to Supabase REST API when DB pool isn't initialized
 		if id, err := InsertDiscussionToSupabase(title, author, content); err == nil {
@@ -365,28 +459,18 @@ func InsertDiscussion(title, author, content string) (Discussion, error) {
 	defer cancel()
 
 	var id int
-	cols := []string{discussionSchema.titleCol, discussionSchema.contentCol}
-	args := []interface{}{title, content}
-	if discussionSchema.hasAuthor {
-		cols = append(cols, discussionSchema.authorCol)
-		args = append(args, author)
-	}
-
-	placeholders := make([]string, len(cols))
-	for i := range placeholders {
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
-	}
-
-	query := fmt.Sprintf("INSERT INTO discussions (%s) VALUES (%s) RETURNING %s", strings.Join(cols, ", "), strings.Join(placeholders, ", "), discussionSchema.idCol)
-	err := db.QueryRow(ctx, query, args...).Scan(&id)
+	err := db.QueryRow(ctx,
+		"INSERT INTO discussions (title, author, content, avatar_url) VALUES ($1, $2, $3, $4) RETURNING id",
+		title, author, content, avatarURL,
+	).Scan(&id)
 	if err != nil {
 		return Discussion{}, err
 	}
 
-	return Discussion{ID: id, Title: title, Author: author, Content: content}, nil
+	return Discussion{ID: id, Title: title, Author: author, Content: content, AvatarURL: avatarURL}, nil
 }
 
-func GetDiscussionByID(id int) (Discussion, error) {
+func GetDiscussionByID(id int, userID string) (Discussion, error) {
 	if db == nil {
 		return Discussion{}, errors.New("database not initialized")
 	}
@@ -405,21 +489,28 @@ func GetDiscussionByID(id int) (Discussion, error) {
 		cols = append(cols, discussionSchema.contentCol)
 	}
 
-	query := fmt.Sprintf("SELECT %s FROM discussions WHERE %s = $1", strings.Join(cols, ", "), discussionSchema.idCol)
+	// previously built `query` variable removed because a full query is used below
 
 	var d Discussion
-	scanArgs := []interface{}{&d.ID}
-	if discussionSchema.hasTitle {
-		scanArgs = append(scanArgs, &d.Title)
-	}
-	if discussionSchema.hasAuthor {
-		scanArgs = append(scanArgs, &d.Author)
-	}
-	if discussionSchema.hasContent {
-		scanArgs = append(scanArgs, &d.Content)
-	}
-
-	err := db.QueryRow(ctx, query, id).Scan(scanArgs...)
+	err := db.QueryRow(ctx, `
+		SELECT
+			d.id,
+			d.title,
+			d.author,
+			d.content,
+			COALESCE(NULLIF(p.avatar_url, ''), d.avatar_url, '') AS avatar_url,
+			COALESCE(v.score, 0) AS score,
+			COALESCE(uv.value, 0) AS user_vote
+		FROM discussions d
+		LEFT JOIN profiles p ON p.username = d.author
+		LEFT JOIN (
+			SELECT discussion_id, SUM(value) AS score
+			FROM discussion_votes
+			GROUP BY discussion_id
+		) v ON v.discussion_id = d.id
+		LEFT JOIN discussion_votes uv ON uv.discussion_id = d.id AND uv.user_id = $1
+		WHERE d.id = $2
+	`, userID, id).Scan(&d.ID, &d.Title, &d.Author, &d.Content, &d.AvatarURL, &d.Score, &d.UserVote)
 	return d, err
 }
 

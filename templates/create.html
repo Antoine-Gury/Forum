@@ -23,20 +23,25 @@
 </nav>
 
 <main>
-    <div class="section-title">Créer une discussion</div>
+    <section class="form-card">
+        <h2>Créer une nouvelle discussion</h2>
 
-    {{if .Error}}
-    <div class="form-error" style="margin-bottom:12px; padding:12px; background:#5a1b1b; color:#fff; border:1px solid #8b0000; border-radius:6px;">
-        {{.Error}}
-    </div>
-    {{end}}
+        {{if .Error}}
+        <p class="error">{{.Error}}</p>
+        {{end}}
 
-    <div class="post" style="display:block; padding:18px;">
-        <form action="/create" method="POST" style="display:flex; flex-direction:column; gap:10px;">
-            <!-- Le pseudo est fourni par le compte connecté côté serveur -->
-            <input id="title" name="title" placeholder="Titre de la discussion" required style="padding:10px; background:#0b0f14; border:1px solid #1a2230; color:var(--color-3);">
-            <textarea id="content" name="content" placeholder="Écris ton message ici" rows="6" required style="padding:10px; background:#0b0f14; border:1px solid #1a2230; color:var(--color-3);"></textarea>
-            <button type="submit" style="align-self:flex-start; padding:10px 14px; background:var(--color-4); color:var(--color-1); border:none; cursor:pointer;">Publier</button>
+        <form action="/create" method="POST">
+            {{if .Author}}
+            <p class="author-info">Posté en tant que : <strong>{{.Author}}</strong></p>
+            {{end}}
+
+            <label for="title">Titre</label>
+            <input id="title" name="title" placeholder="Titre de la discussion" required>
+
+            <label for="content">Message</label>
+            <textarea id="content" name="content" placeholder="Écris ton message ici" rows="6" required></textarea>
+
+            <button type="submit">Publier</button>
         </form>
     </div>
 

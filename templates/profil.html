@@ -19,7 +19,20 @@
 {{ if .Email }}
 <main>
     <div class="profile-card">
-        <div class="avatar">⚔</div>
+
+        <!-- Avatar cliquable -->
+        <label class="avatar-label" title="Changer la photo de profil">
+            {{ if .AvatarURL }}
+            <img class="avatar avatar-img" src="{{ .AvatarURL }}" alt="Avatar">
+            {{ else }}
+            <div class="avatar">⚔</div>
+            {{ end }}
+            <div class="avatar-overlay">📷</div>
+            <input type="file" id="avatarInput" accept="image/*" style="display:none">
+        </label>
+        {{ if .AvatarError }}
+        <p class="avatar-error">{{ .AvatarError }}</p>
+        {{ end }}
 
         <div class="profile-info">
             <div class="info-row">
@@ -42,6 +55,29 @@
         </div>
     </div>
 </main>
+
+<script>
+document.getElementById("avatarInput").addEventListener("change", async function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    const res = await fetch("/upload-avatar", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (res.ok) {
+        window.location.reload();
+    } else {
+        const text = await res.text();
+        alert("Erreur : " + text);
+    }
+});
+</script>
+
 {{ else }}
 <main>
     <div class="profile-card">
