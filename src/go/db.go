@@ -159,7 +159,8 @@ func ensureDiscussionTable(ctx context.Context, pool *pgxpool.Pool) error {
 			title TEXT NOT NULL,
 			author TEXT NOT NULL DEFAULT 'Invité',
 			content TEXT NOT NULL,
-			avatar_url TEXT NOT NULL DEFAULT ''
+			avatar_url TEXT NOT NULL DEFAULT '',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)
 	`)
 	if err != nil {
@@ -167,6 +168,7 @@ func ensureDiscussionTable(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	_, _ = pool.Exec(ctx, `ALTER TABLE discussions ADD COLUMN IF NOT EXISTS author TEXT NOT NULL DEFAULT 'Invité'`)
 	_, _ = pool.Exec(ctx, `ALTER TABLE discussions ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT ''`)
+	_, _ = pool.Exec(ctx, `ALTER TABLE discussions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`)
 	return nil
 }
 
@@ -490,7 +492,8 @@ func GetDiscussionsFromDB(userID string) ([]Discussion, error) {
 			d.content,
 			COALESCE(NULLIF(p.avatar_url, ''), d.avatar_url, '') AS avatar_url,
 			COALESCE(v.score, 0) AS score,
-			COALESCE(uv.value, 0) AS user_vote
+			COALESCE(uv.value, 0) AS user_vote,
+			d.created_at
 		FROM discussions d
 		LEFT JOIN profiles p ON p.username = d.author
 		LEFT JOIN (
@@ -509,9 +512,11 @@ func GetDiscussionsFromDB(userID string) ([]Discussion, error) {
 	var discussions []Discussion
 	for rows.Next() {
 		var d Discussion
-		if err := rows.Scan(&d.ID, &d.Title, &d.Author, &d.Content, &d.AvatarURL, &d.Score, &d.UserVote); err != nil {
+		var createdAt time.Time
+		if err := rows.Scan(&d.ID, &d.Title, &d.Author, &d.Content, &d.AvatarURL, &d.Score, &d.UserVote, &createdAt); err != nil {
 			return nil, err
 		}
+		d.CreatedAt = createdAt.Format(time.RFC3339)
 		discussions = append(discussions, d)
 	}
 
@@ -540,7 +545,7 @@ func InsertDiscussion(title, author, content, avatarURL string) (Discussion, err
 		return Discussion{}, err
 	}
 
-	return Discussion{ID: id, Title: title, Author: author, Content: content, AvatarURL: avatarURL}, nil
+	return Discussion{ID: id, Title: title, Author: author, Content: content, AvatarURL: avatarURL, CreatedAt: time.Now().Format(time.RFC3339)}, nil
 }
 
 func GetDiscussionByID(id int, userID string) (Discussion, error) {
@@ -565,6 +570,7 @@ func GetDiscussionByID(id int, userID string) (Discussion, error) {
 	// previously built `query` variable removed because a full query is used below
 
 	var d Discussion
+	var createdAt time.Time
 	err := db.QueryRow(ctx, `
 		SELECT
 			d.id,
@@ -573,7 +579,8 @@ func GetDiscussionByID(id int, userID string) (Discussion, error) {
 			d.content,
 			COALESCE(NULLIF(p.avatar_url, ''), d.avatar_url, '') AS avatar_url,
 			COALESCE(v.score, 0) AS score,
-			COALESCE(uv.value, 0) AS user_vote
+			COALESCE(uv.value, 0) AS user_vote,
+			d.created_at
 		FROM discussions d
 		LEFT JOIN profiles p ON p.username = d.author
 		LEFT JOIN (
@@ -583,7 +590,8 @@ func GetDiscussionByID(id int, userID string) (Discussion, error) {
 		) v ON v.discussion_id = d.id
 		LEFT JOIN discussion_votes uv ON uv.discussion_id = d.id AND uv.user_id = $1
 		WHERE d.id = $2
-	`, userID, id).Scan(&d.ID, &d.Title, &d.Author, &d.Content, &d.AvatarURL, &d.Score, &d.UserVote)
+	`, userID, id).Scan(&d.ID, &d.Title, &d.Author, &d.Content, &d.AvatarURL, &d.Score, &d.UserVote, &createdAt)
+	d.CreatedAt = createdAt.Format(time.RFC3339)
 	if err != nil {
 		return d, err
 	}

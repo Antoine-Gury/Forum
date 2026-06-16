@@ -26,6 +26,14 @@
 
 <main>
     <div class="section-title">Discussions récentes</div>
+    
+    <div class="filters">
+        <label for="sort-filter">Trier par:</label>
+        <select id="sort-filter">
+            <option value="likes">Plus aimées</option>
+            <option value="recent">Plus récentes</option>
+        </select>
+    </div>
 
     {{if .Message}}
     <div class="home-message">{{.Message}}</div>
@@ -33,7 +41,7 @@
 
     <div id="discussions-list">
         {{range .Discussions}}
-        <div class="post">
+        <div class="post" data-score="{{.Score}}" data-created="{{.CreatedAt}}">
             
             <div class="post-avatar">
                 {{if .AvatarURL}}
@@ -59,5 +67,35 @@
 
 <script src="/src/js/button.js"></script>
 <script src="/src/js/live.js"></script>
+<script>
+function sortDiscussions(sortBy) {
+    const posts = Array.from(document.querySelectorAll('#discussions-list > .post'));
+    
+    posts.sort((a, b) => {
+        if (sortBy === 'likes') {
+            const scoreA = parseInt(a.dataset.score) || 0;
+            const scoreB = parseInt(b.dataset.score) || 0;
+            return scoreB - scoreA; // décroissant
+        } else if (sortBy === 'recent') {
+            const dateA = new Date(a.dataset.created);
+            const dateB = new Date(b.dataset.created);
+            return dateB - dateA; // décroissant
+        }
+        return 0;
+    });
+    
+    const container = document.getElementById('discussions-list');
+    posts.forEach(post => container.appendChild(post));
+}
+
+document.getElementById('sort-filter').addEventListener('change', function() {
+    sortDiscussions(this.value);
+});
+
+// Tri initial par likes
+document.addEventListener('DOMContentLoaded', function() {
+    sortDiscussions('likes');
+});
+</script>
 </body>
 </html>

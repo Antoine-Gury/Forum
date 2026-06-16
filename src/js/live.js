@@ -31,6 +31,8 @@ function addDiscussionToDOM(discussion) {
 
     const post = document.createElement("div");
     post.className = "post";
+    post.dataset.score = discussion.Score || 0;
+    post.dataset.created = discussion.CreatedAt || new Date().toISOString();
     post.innerHTML = `
         <div class="post-avatar">${avatarHTML(discussion.AvatarURL)}</div>
         <div class="post-body">

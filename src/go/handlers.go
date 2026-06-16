@@ -20,6 +20,7 @@ type Discussion struct {
 	Score     int
 	UserVote  int
 	Replies   []Reply
+	CreatedAt string
 }
 
 type Reply struct {
